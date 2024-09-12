@@ -1,0 +1,30 @@
+{% extends app.request.isXmlHttpRequest() 
+? 'basejs.html.twig'
+: 'base.html.twig' %}
+
+{% block modulName %}
+    {{ caption }}
+    <small>List</small>
+<span class="glyphicon glyphicon-list" aria-hidden="true"></span>
+{% endblock %}
+
+{% block navigation %}
+    <li class="active">{{ caption }}</li>
+{% endblock %}
+
+
+{% block body %}
+
+<h1>Hello World</h1>
+<h2>{{ myVar }}</h2>
+
+{% for key,value in arr %}
+{% if key == 1 %}
+<h1><b>{{ key }}</b>  - {{ value }}<br></h1>
+{% else %}
+<h3><b>{{ key }}</b>  - {{ value }}<br></h3>
+{% endif %}
+{% endfor %} 
+
+{% endblock %}
+
