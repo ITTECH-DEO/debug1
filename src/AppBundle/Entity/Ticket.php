@@ -3,11 +3,12 @@
 namespace AppBundle\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Validator\Constraints as Assert;
 
 /**
  * Ticket
  *
- * @ORM\Table(name="ticket",)
+ * @ORM\Table(name="tickets",)
  * @ORM\Entity
  */
 
@@ -54,35 +55,34 @@ class Ticket
     /**
      * @var string
      *
-     * @ORM\Column(name="project", type="string", length=100, nullable=false)
+     * @ORM\Column(name="project", type="string", length=100, nullable=true)
      */
     private $project;
 
-    /**
-     * @var string
-     *
-     * @ORM\Column(name="type", type="string", length=10, nullable=false)
-     */
-    private $type;
-    
+   /**
+ * @var string
+ * @ORM\Column(name="type", type="string", length=10, nullable=false)
+ * @Assert\Choice(choices={"Bug", "Feature", "Task"}, message="Choose a valid type.")
+ */
+private $type;
 
+/**
+ * @var string
+ * @ORM\Column(name="priority", type="string", nullable=false)
+ * @Assert\Choice(choices={"low", "medium", "high"}, message="Choose a valid priority.")
+ */
+private $priority;
     /**
      * @var string
-     *
-     * @ORM\Column(name="priority", type="string", nullable=false)
-     */
-    private $priority;
-
-    /**
-     * @var string
-     *
+     * @Assert\NotBlank(message="Title cannot be blank")
      * @ORM\Column(name="title", type="string", length=255, nullable=false)
      */
+    
     private $title;
 
     /**
      * @var string
-     *
+     * @Assert\NotBlank(message="Content cannot be blank")
      * @ORM\Column(name="content", type="text", nullable=false)
      */
     private $content;
@@ -94,6 +94,13 @@ class Ticket
      */
     private $image;
 
+     /**
+     * @var string
+     * Image (optional) 
+     * @ORM\Column(type="text", nullable=true)
+     */
+    private $description; // Properti ini harus ada
+
     /**
      * @var string
      *
@@ -102,11 +109,11 @@ class Ticket
     private $reviewedBy;
 
     /**
-     * @var string
-     *
-     * @ORM\Column(name="status", type="string", length=15, nullable=false, options={"default": "Created"})
-     */
-    private $status;
+ * @var string
+ * @ORM\Column(type="string", length=255)
+ * @Assert\Choice(choices={"Created", "In Progress", "Done", "Validated", "Rejected"}, message="Choose a valid status.")
+ */
+private $status = 'Created'; // Default value
 
     /**
      * @var string
@@ -134,7 +141,7 @@ class Ticket
      *
      * @ORM\Column(name="created_by", type="string", length=45, nullable=true)
      */
-    private $createdBy;
+    private $createdBy = 'anonymous';
 
     /**
      * @var \DateTime
@@ -192,9 +199,9 @@ class Ticket
      *
      * @return Tickets
      */
-    public function setType(string $type)
+    public function setType($type)
     {
-        if (!in_array($type, self::$validTypes)) {
+        if (!in_array($type, ['Bug', 'Feature', 'Task'])) {
             throw new \InvalidArgumentException("Invalid type");
         }
 
@@ -212,6 +219,18 @@ class Ticket
     {
         return $this->type;
     }
+    
+    // Getter dan Setter untuk description
+    public function getDescription()
+    {
+        return $this->description;
+    }
+
+    public function setDescription($description)
+    {
+        $this->description = $description;
+    }
+
 
     /**
      * Set priority
@@ -220,12 +239,11 @@ class Ticket
      *
      * @return Tickets
      */
-    public function setPriority(string $priority)
+    public function setPriority($priority)
     {
-        if (!in_array($priority, self::getArrayPriority())) {
+        if (!in_array($priority, ['low', 'medium', 'high'])) {
             throw new \InvalidArgumentException("Invalid priority");
         }
-
         $this->priority = $priority;
 
         return $this;
@@ -248,7 +266,7 @@ class Ticket
      *
      * @return Tickets
      */
-    public function setTitle(string $title)
+    public function setTitle($title)
     {
         $this->title = $title;
 
@@ -272,8 +290,12 @@ class Ticket
      *
      * @return Tickets
      */
-    public function setContent(string $content)
+    public function setContent($content)
     {
+        if (!is_string($content)) {
+            throw new \InvalidArgumentException('Content must be a string.');
+        }
+    
         $this->content = $content;
 
         return $this;
@@ -296,7 +318,7 @@ class Ticket
      *
      * @return Tickets
      */
-    public function setImage(string $image)
+    public function setImage($image)
     {
         $this->image = $image;
 

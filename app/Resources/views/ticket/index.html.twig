@@ -14,45 +14,6 @@
 
 
 {% block body %}
-<?php
-session_start();
-
-if (!isset($_SESSION['username'])) {
-    header("Location: login.php");
-    exit();
-}
-
-include 'logic.php';
-
-$username = $_SESSION['username'];
-$result = mysqli_query($conn, "SELECT role FROM users WHERE username = '$username'");
-$user = mysqli_fetch_assoc($result);
-$role = $user['role'];
-
-if (isset($_SESSION['success_message'])) {
-    echo '<div class="alert alert-success">' . $_SESSION['success_message'] . '</div>';
-    unset($_SESSION['success_message']);
-}
-
-if (isset($_SESSION['error_message'])) {
-    echo '<div class="alert alert-danger">' . $_SESSION['error_message'] . '</div>';
-    unset($_SESSION['error_message']);
-}
-
-if (isset($_SESSION['flash_message'])) {
-    $flash_message = $_SESSION['flash_message'];
-    unset($_SESSION['flash_message']);
-} else {
-    $flash_message = null;
-}
-
-$selected_department = isset($_GET['department']) ? strtolower($_GET['department']) : 'all';
-$selected_priority = isset($_GET['priority']) ? strtolower($_GET['priority']) : 'all';
-$selected_status = isset($_GET['status']) ? strtolower($_GET['status']) : 'all';
-$selected_type = isset($_GET['type']) ? strtolower($_GET['type']) : 'all';
-$selected_responsible = isset($_GET['responsible']) ? strtolower($_GET['responsible']) : 'all';
-$search_text = isset($_GET['search']) ? $_GET['search'] : '';
-?>
 <!DOCTYPE html>
 <html lang="en">
 
@@ -65,7 +26,7 @@ $search_text = isset($_GET['search']) ? $_GET['search'] : '';
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-    <script src="https://cdn.tiny.cloud/1/wyw9gl71w8plkue3jlo4p1s075wczw99s1wre43whoy8am1t/tinymce/5/tinymce.min.js" referrerpolicy="origin"></script>
+    <script src="https://cdn.tiny.cloud/1/by9i7xogg1cexsa8cocqltdu5oo1u0cko5yrfdpwc986581z/tinymce/5/tinymce.min.js" referrerpolicy="origin"></script>
 
     <script>
         function filterTickets() {
@@ -78,7 +39,7 @@ $search_text = isset($_GET['search']) ? $_GET['search'] : '';
             const selectedStatus = document.getElementById('statusDropdown').value.toLowerCase();
 
             $.ajax({
-                url: 'filter_tickets.php',
+                url: '{{ path("filter_tickets") }}',
                 type: 'GET',
                 data: {
                     search: searchText,
@@ -90,15 +51,18 @@ $search_text = isset($_GET['search']) ? $_GET['search'] : '';
                     status: selectedStatus
                 },
                 success: function(response) {
-                    document.getElementById('ticketList').innerHTML = response;
+                    $('#ticketList').html(response);
                 },
                 error: function(xhr, status, error) {
                     console.error('Error occurred:', status, error);
                 }
             });
         }
+
     </script>
+
     <style>
+        /* Full CSS Code */
         body {
             font-family: 'Arial', sans-serif;
             background-color: #f5f6fa;
@@ -571,159 +535,119 @@ $search_text = isset($_GET['search']) ? $_GET['search'] : '';
 </head>
 
 <body>
-<div class="container">
+    <div class="container">
         <div class="header d-flex justify-content-between align-items-center">
             <h1>Tickets</h1>
-            <a href="logout.php" class="btn btn-danger" onclick="return confirm('Are you sure you want to logout?');">Logout</a>
+            {#<a href="{{ path('logout') }}" class="btn btn-danger" onclick="return confirm('Are you sure you want to logout?');">Logout</a>#}
         </div>
 
         <!-- Flash message -->
-        <?php if ($flash_message): ?>
+        {#{% if flash_message %}
             <div class="flash-message">
-                <?= $flash_message; ?>
+                {{ flash_message }}
             </div>
-        <?php endif; ?>
-
-        <?php if ($role == 'admin'): ?>
+        {% endif %}#}
+        
+       {# {% if role == 'admin' %} #}
             <div class="alert alert-info mt-3">
                 <h5><i class="material-icons">notifications_active</i> Tickets Available for Assignment</h5>
-                <form method="POST" action="logic.php">
-                    <input type="hidden" name="action" value="assign_tickets">
-                    <input type="hidden" name="admin_username" value="<?= $username; ?>">
+                <form method="POST" action="{{ path('logic_assign_tickets') }}">
+                     {# <input type="hidden" name="admin_username" value="{{ username }}"> #}
                     <div class="card-custom-container">
-                        <?php 
-                        $stmt = $conn->prepare("
-                        SELECT t.*, GROUP_CONCAT(u.username) AS assigned_to 
-                        FROM tickets t 
-                        LEFT JOIN ticket_user tu ON t.id = tu.ticket_id 
-                        LEFT JOIN users u ON tu.user_id = u.id 
-                        WHERE t.id NOT IN (
-                            SELECT ticket_id 
-                            FROM ticket_user 
-                            WHERE user_id = (
-                                SELECT id FROM users WHERE username = ?
-                            )
-                        )
-                        GROUP BY t.id 
-                        ORDER BY t.created_at DESC
-                    ");
-                    $stmt->bind_param("s", $username); 
-                    $stmt->execute();
-                    $result = $stmt->get_result();
-                    $tickets = $result->fetch_all(MYSQLI_ASSOC);
-
-                    if (count($tickets) > 0) {
-                        foreach ($tickets as $ticket) {
-                                $id = $ticket['id'];
-                                $priority = strtolower($ticket['priority']);
-                                $status = strtolower($ticket['status']);
-                                $title = $ticket['title'];
-                                $content = $ticket['content'];
-                                $created_at = $ticket['created_at'];
-                                $image = $ticket['image']; // Get the image path
-
-                                // New Logic: Check for TinyMCE images
-                                $image_present = false;
-                                if (preg_match('/<img[^>]+src="([^">]+)"/i', $content, $matches)) {
-                                    $image_present = true;
-                                    // Replace all image tags with a single "Lihat Gambar" link if not already present
-                                    $content = preg_replace('/<img[^>]+>/', '', $content); // Remove all image tags
-                                    
-                                }
-                        ?>
-                        <div class="card-custom mb-2" 
-                             data-status="<?= $status; ?>" 
-                             data-priority="<?= $priority; ?>" 
-                             data-department="<?= strtolower($ticket['department']); ?>"
-                             data-type="<?= strtolower($ticket['type']); ?>"
-                             data-responsible="<?= strtolower($ticket['assigned_to'] ?? 'all'); ?>"
-                             data-week="<?= strtolower($ticket['week'] ?? 'all'); ?>">
-                            <div class="card-header-custom <?= $priority; ?>">
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" name="selected_tickets[]" value="<?= $id; ?>">
-                                        <label class="form-check-label">
-                                            Ticket# <?= $id; ?> - <?= $title; ?>
-                                        </label>
+                        {% if tickets|length > 0 %}
+                            {% for ticket in tickets %}
+                                <div class="card-custom mb-2"
+                                    data-status="{{ ticket.status|lower }}"
+                                    data-priority="{{ ticket.priority|lower }}"
+                                    data-department="{{ ticket.department|lower }}"
+                                    data-type="{{ ticket.type|lower }}"
+                                    data-responsible="{{ ticket.assigned_to|default('all')|lower }}"
+                                    data-week="{{ ticket.week|default('all')|lower }}">
+                                    <div class="card-header-custom {{ ticket.priority|lower }}">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" name="selected_tickets[]" value="{{ ticket.id }}">
+                                                <label class="form-check-label">
+                                                    Ticket# {{ ticket.id }} - {{ ticket.title }}
+                                                </label>
+                                            </div>
+                                            <span class="priority-label {{ ticket.priority|lower }}">{{ ticket.priority|capitalize }} Priority</span>
+                                        </div>
+                                        <span class="posted-time">Posted at {{ ticket.createdAt|date('Y-m-d H:i') }}</span>
                                     </div>
-                                    <span class="priority-label <?= $priority; ?>"><?= ucfirst($priority); ?> Priority</span>
+                                    <div class="card-body-custom">
+                                        <p class="card-title-custom">{{ ticket.title }}</p>
+                                        <p class="card-text-custom">{{ ticket.content|raw }}</p>
+                                        {% if ticket.image %}
+                                            <p><a href="#" data-bs-toggle="modal" data-bs-target="#imageModal{{ ticket.id }}">Lihat Gambar</a></p>
+                                        {% endif %}
+                                    </div>
                                 </div>
-                                <span class="posted-time">Posted at <?= $created_at; ?></span>
-                            </div>
-                            <div class="card-body-custom">
-                                <p class="card-title-custom"><?= $title; ?></p>
-                                <p class="card-text-custom"><?= $content; ?></p>
-                                <?php if ($image_present || $image): ?>
-                                    <p><a href="#" data-bs-toggle="modal" data-bs-target="#imageModal<?= $id; ?>">Lihat Gambar</a></p>
-                                <?php endif; ?>
-                            </div>
-                        </div>
+
                         <!-- Modal for Image -->
-                        <?php if ($image_present || $image): ?>
-                        <div class="modal fade" id="imageModal<?= $id; ?>" tabindex="-1" aria-labelledby="imageModalLabel<?= $id; ?>" aria-hidden="true">
-                            <div class="modal-dialog">
-                                <div class="modal-content">
-                                    <div class="modal-header">
-                                        <h5 class="modal-title" id="imageModalLabel<?= $id; ?>">Image for Ticket# <?= $id; ?></h5>
-                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                    </div>
-                                    <div class="modal-body">
-                                        <?php if ($image_present): ?>
-                                            <img src="<?= $matches[1]; ?>" class="img-fluid" alt="Ticket Image">
-                                        <?php elseif ($image): ?>
-                                            <img src="<?= $image; ?>" class="img-fluid" alt="Ticket Image">
-                                        <?php endif; ?>
+                        {% if ticket.image %}
+                            <div class="modal fade" id="imageModal{{ ticket.id }}" tabindex="-1" aria-labelledby="imageModalLabel{{ ticket.id }}" aria-hidden="true">
+                                <div class="modal-dialog">
+                                    <div class="modal-content">
+                                        <div class="modal-header">
+                                            <h5 class="modal-title" id="imageModalLabel{{ ticket.id }}">Image for Ticket# {{ ticket.id }}</h5>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                        </div>
+                                        <div class="modal-body">
+                                            <img src="{{ asset('uploads/' ~ ticket.image) }}" class="img-fluid" alt="Ticket Image">
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                        <?php endif; ?>
-                        <?php 
-                            } 
-                        } else {
-                            echo "<p>No tickets available for assignment.</p>";
-                        }
-                        ?>
-                    </div>
-                    <?php if (count($tickets) > 0): ?>
-                        <button type="submit" class="btn btn-success mt-3">Ambil Tiket</button>
-                    <?php endif; ?>
-                </form>
+                        {% endif %}
+                    {% endfor %}
+                {% else %}
+                    <p>No tickets available for assignment.</p>
+                {% endif %}
             </div>
-        <?php endif; ?>
+            {% if tickets|length > 0 %}
+                <button type="submit" class="btn btn-success mt-3">Ambil Tiket</button>
+            {% endif %}
+        </form>
+    </div>
+{#{% endif %}#}
+
 
         <div class="card-header-controls">
             <form id="filterForm" method="GET" action="">
                 <div class="d-flex justify-content-between align-items-start">
                     <div class="search-bar">
-                        <input type="text" id="search-box" name="search" placeholder="Search for ticket" value="<?= isset($_GET['search']) ? $_GET['search'] : '' ?>">
+                       <input type="text" id="search-box" name="search" placeholder="Search for ticket" value="{{ search_text }}">
                     </div>
                     <div class="filters">
                         <div class="dropdown">
-                            <select class="form-select" id="priorityDropdown" name="priority" aria-label="Select Priority" onchange="filterTickets();">
-                                <option value="all" <?= (isset($_GET['priority']) && $_GET['priority'] == 'all') ? 'selected' : '' ?>>All Priorities</option>
-                                <option value="low" <?= (isset($_GET['priority']) && $_GET['priority'] == 'low') ? 'selected' : '' ?>>Low</option>
-                                <option value="medium" <?= (isset($_GET['priority']) && $_GET['priority'] == 'medium') ? 'selected' : '' ?>>Medium</option>
-                                <option value="high" <?= (isset($_GET['priority']) && $_GET['priority'] == 'high') ? 'selected' : '' ?>>High</option>
-                            </select>
+                            <select class="form-select" id="priorityDropdown" name="priority" onchange="filterTickets();">
+                            <option value="all" {{ selected_priority == 'all' ? 'selected' : '' }}>All Priorities</option>
+                            <option value="low" {{ selected_priority == 'low' ? 'selected' : '' }}>Low</option>
+                            <option value="medium" {{ selected_priority == 'medium' ? 'selected' : '' }}>Medium</option>
+                            <option value="high" {{ selected_priority == 'high' ? 'selected' : '' }}>High</option>
+                        </select>
                         </div>
+
                         <div class="dropdown">
                             <select class="form-select" id="weekDropdown" name="week" aria-label="Select Week" onchange="filterTickets();">
-                                <option value="all" <?= (isset($_GET['week']) && $_GET['week'] == 'all') ? 'selected' : '' ?>>All Weeks</option>
-                                <option value="week-1" <?= (isset($_GET['week']) && $_GET['week'] == 'week-1') ? 'selected' : '' ?>>Week 1</option>
-                                <option value="week-2" <?= (isset($_GET['week']) && $_GET['week'] == 'week-2') ? 'selected' : '' ?>>Week 2</option>
-                                <option value="week-3" <?= (isset($_GET['week']) && $_GET['week'] == 'week-3') ? 'selected' : '' ?>>Week 3</option>
-                                <option value="week-4" <?= (isset($_GET['week']) && $_GET['week'] == 'week-4') ? 'selected' : '' ?>>Week 4</option>
+                                <option value="all" {{ selected_week == 'all' ? 'selected' : '' }}>All Weeks</option>
+                                <option value="week-1" {{ selected_week == 'week-1' ? 'selected' : '' }}>Week 1</option>
+                                <option value="week-2" {{ selected_week == 'week-2' ? 'selected' : '' }}>Week 2</option>
+                                <option value="week-3" {{ selected_week == 'week-3' ? 'selected' : '' }}>Week 3</option>
+                                <option value="week-4" {{ selected_week == 'week-4' ? 'selected' : '' }}>Week 4</option>
                             </select>
                         </div>
+
                         <div class="dropdown">
                             <select class="form-select" id="statusDropdown" name="status" aria-label="Select Status" onchange="filterTickets();">
-                                <option value="all" <?= (isset($_GET['status']) && $_GET['status'] == 'all') ? 'selected' : '' ?>>All</option>
-                                <option value="created" <?= (isset($_GET['status']) && $_GET['status'] == 'created') ? 'selected' : '' ?>>Created</option>
-                                <option value="in progress" <?= (isset($_GET['status']) && $_GET['status'] == 'in progress') ? 'selected' : '' ?>>In Progress</option>
-                                <option value="validated" <?= (isset($_GET['status']) && $_GET['status'] == 'validated') ? 'selected' : '' ?>>Validated</option>
+                                <option value="all" {{ selected_status == 'all' ? 'selected' : '' }}>All</option>
+                                <option value="created" {{ selected_status == 'created' ? 'selected' : '' }}>Created</option>
+                                <option value="in progress" {{ selected_status == 'in progress' ? 'selected' : '' }}>In Progress</option>
+                                <option value="validated" {{ selected_status == 'validated' ? 'selected' : '' }}>Validated</option>
                             </select>
                         </div>
+
                         <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#newTicketModal">
                             <span class="material-icons">add_circle_outline</span>
                             New Ticket
@@ -753,15 +677,14 @@ $search_text = isset($_GET['search']) ? $_GET['search'] : '';
                     <span class="material-icons">check_circle_outline</span>
                     Resolved
                 </a>
-                <?php if ($role == 'admin'): ?>
+                {#{% if role == 'admin' %}#}
                     <a href="#" class="tab-link" data-target="#my-tickets">
                         <span class="material-icons">assignment_ind</span>
                         Tiket Saya
                     </a>
-                <?php endif; ?>
+                {#{% endif %}#}
             </div>
         </div>
-
         <div class="filter-card-header" id="filterToggle">
             <strong>Filters</strong>
             <span class="float-end">
@@ -775,71 +698,61 @@ $search_text = isset($_GET['search']) ? $_GET['search'] : '';
                     <div class="filters">
                         <div class="dropdown">
                             <select class="form-select" id="departmentDropdown" name="department" aria-label="Select Department" onchange="filterTickets();">
-                                <option value="all" <?= ($selected_department == 'all') ? 'selected' : '' ?>>All Departments</option>
-                                <?php 
-                                $departments = mysqli_query($conn, "SELECT DISTINCT department FROM tickets");
-                                while ($department = mysqli_fetch_assoc($departments)) {
-                                    $department_value = strtolower($department['department']);
-                                    $selected = ($department_value == $selected_department) ? 'selected' : '';
-                                    echo "<option value='{$department_value}' {$selected}>" . ucfirst($department['department']) . "</option>";
-                                }
-                                ?>
+                                <option value="all" {{ selected_department == 'all' ? 'selected' : '' }}>All Departments</option>
+                                {% for department in departments %}
+                                    <option value="{{ department|lower }}" {{ selected_department == department|lower ? 'selected' : '' }}>
+                                        {{ department|capitalize }}
+                                    </option>
+                                {% endfor %}
                             </select>
                         </div>
+
                         <div class="dropdown">
                             <select class="form-select" id="priorityDropdown" name="priority" aria-label="Select Priority" onchange="filterTickets();">
-                                <option value="all" <?= ($selected_priority == 'all') ? 'selected' : '' ?>>All Priorities</option>
-                                <?php 
-                                $priorities = mysqli_query($conn, "SELECT DISTINCT priority FROM tickets");
-                                while ($priority = mysqli_fetch_assoc($priorities)) {
-                                    $priority_value = strtolower($priority['priority']);
-                                    $selected = ($priority_value == $selected_priority) ? 'selected' : '';
-                                    echo "<option value='{$priority_value}' {$selected}>" . ucfirst($priority_value) . "</option>";
-                                }
-                                ?>
+                                <option value="all" {{ selected_priority == 'all' ? 'selected' : '' }}>All Priorities</option>
+                                {% for priority in priorities %}
+                                    <option value="{{ priority|lower }}" {{ selected_priority == priority|lower ? 'selected' : '' }}>
+                                        {{ priority|capitalize }}
+                                    </option>
+                                {% endfor %}
                             </select>
                         </div>
+
                         <div class="dropdown">
                             <select class="form-select" id="statusDropdown" name="status" aria-label="Select Status" onchange="filterTickets();">
-                                <option value="all" <?= ($selected_status == 'all') ? 'selected' : '' ?>>All Statuses</option>
-                                <?php 
-                                $statuses = mysqli_query($conn, "SELECT DISTINCT status FROM tickets");
-                                while ($status = mysqli_fetch_assoc($statuses)) {
-                                    $status_value = strtolower($status['status']);
-                                    $selected = ($status_value == $selected_status) ? 'selected' : '';
-                                    echo "<option value='{$status_value}' {$selected}>" . ucfirst($status['status']) . "</option>";
-                                }
-                                ?>
+                                <option value="all" {{ selected_status == 'all' ? 'selected' : '' }}>All Statuses</option>
+                                {% for status in statuses %}
+                                    <option value="{{ status|lower }}" {{ selected_status == status|lower ? 'selected' : '' }}>
+                                        {{ status|capitalize }}
+                                    </option>
+                                {% endfor %}
                             </select>
                         </div>
+
                         <div class="dropdown">
                             <select class="form-select" id="typeDropdown" name="type" aria-label="Select Type" onchange="filterTickets();">
-                                <option value="all" <?= ($selected_type == 'all') ? 'selected' : '' ?>>All Types</option>
-                                <?php 
-                                $types = mysqli_query($conn, "SELECT DISTINCT type FROM tickets");
-                                while ($type = mysqli_fetch_assoc($types)) {
-                                    $type_value = strtolower($type['type']);
-                                    $selected = ($type_value == $selected_type) ? 'selected' : '';
-                                    echo "<option value='{$type_value}' {$selected}>" . ucfirst($type['type']) . "</option>";
-                                }
-                                ?>
+                                <option value="all" {{ selected_type == 'all' ? 'selected' : '' }}>All Types</option>
+                                {% for type in types %}
+                                    <option value="{{ type|lower }}" {{ selected_type == type|lower ? 'selected' : '' }}>
+                                        {{ type|capitalize }}
+                                    </option>
+                                {% endfor %}
                             </select>
                         </div>
+
                         <div class="dropdown">
                             <select class="form-select" id="responsibleDropdown" name="responsible" aria-label="Select Responsible" onchange="filterTickets();">
-                                <option value="all" <?= ($selected_responsible == 'all') ? 'selected' : '' ?>>All Responsible</option>
-                                <?php 
-                                $responsibles = mysqli_query($conn, "SELECT DISTINCT assigned_to FROM tickets WHERE assigned_to IS NOT NULL");
-                                while ($responsible = mysqli_fetch_assoc($responsibles)) {
-                                    $responsible_value = strtolower($responsible['assigned_to']);
-                                    $selected = ($responsible_value == $selected_responsible) ? 'selected' : '';
-                                    echo "<option value='{$responsible_value}' {$selected}>" . ucfirst($responsible['assigned_to']) . "</option>";
-                                }
-                                ?>
+                                <option value="all" {{ selected_responsible == 'all' ? 'selected' : '' }}>All Responsible</option>
+                                {% for responsible in responsibles %}
+                                    <option value="{{ responsible|lower }}" {{ selected_responsible == responsible|lower ? 'selected' : '' }}>
+                                        {{ responsible|capitalize }}
+                                    </option>
+                                {% endfor %}
                             </select>
                         </div>
+
                         <div class="search-bar">
-                            <input type="text" placeholder="Search for tickets" name="search" value="<?= $search_text ?>" oninput="filterTickets();">
+                            <input type="text" placeholder="Search for tickets" name="search" value="{{ search_text }}" oninput="filterTickets();">
                         </div>
                     </div>
                     <div class="filters">
@@ -854,474 +767,298 @@ $search_text = isset($_GET['search']) ? $_GET['search'] : '';
             </form>
         </div>
 
+
         <div id="all-tickets" class="tab-content active">
             <div id="ticketList" class="card-custom-container">
-            <?php 
-        $query = "SELECT * FROM tickets WHERE 1=1";
-
-        
-        if (isset($_GET['search']) && !empty($_GET['search'])) {
-            $search = mysqli_real_escape_string($conn, $_GET['search']);
-            $query .= " AND title LIKE '%$search%'";
-        }
-
-        
-        if (isset($_GET['priority']) && $_GET['priority'] !== 'all') {
-            $priority = mysqli_real_escape_string($conn, $_GET['priority']);
-            $query .= " AND priority = '$priority'";
-        }
-
-        
-        if (isset($_GET['week']) && $_GET['week'] !== 'all') {
-            $week = $_GET['week'];
-            switch ($week) {
-                case 'week-1':
-                    $startOfWeek = date('Y-m-01');
-                    $endOfWeek = date('Y-m-07');
-                    break;
-                case 'week-2':
-                    $startOfWeek = date('Y-m-08');
-                    $endOfWeek = date('Y-m-14');
-                    break;
-                case 'week-3':
-                    $startOfWeek = date('Y-m-15');
-                    $endOfWeek = date('Y-m-21');
-                    break;
-                case 'week-4':
-                    $startOfWeek = date('Y-m-22');
-                    $endOfWeek = date('Y-m-t');
-                    break;
-            }
-            $query .= " AND DATE(created_at) BETWEEN '$startOfWeek' AND '$endOfWeek'";
-        }
-
-        
-        if (isset($_GET['status']) && $_GET['status'] !== 'all') {
-            $status = mysqli_real_escape_string($conn, $_GET['status']);
-            $query .= " AND status = '$status'";
-        }
-
-        $query .= " ORDER BY created_at DESC";
-        $tickets = mysqli_query($conn, $query);
-
-        if (mysqli_num_rows($tickets) > 0) {
-            while ($ticket = mysqli_fetch_assoc($tickets)) {
-                $id = $ticket['id'];
-                $priority = $ticket['priority'];
-                $status = $ticket['status'];
-                $title = $ticket['title'];
-                $content = $ticket['content'];
-                $created_at = $ticket['created_at'];
-                $created_by = $ticket['created_by'];
-                $reviewed_by = $ticket['reviewed_by'];
-                $image = $ticket['image']; // Get the image path
-
-                // New Logic: Check for TinyMCE images
-                $image_present = false;
-                if (preg_match('/<img[^>]+src="([^">]+)"/i', $content, $matches)) {
-                    $image_present = true;
-                    // Replace all image tags with a single "Lihat Gambar" link if not already present
-                    $content = preg_replace('/<img[^>]+>/', '', $content); // Remove all image tags
-                }
-        ?>
-        <div class="card-custom" data-status="<?= $status; ?>" data-priority="<?= $priority; ?>">
-            <div class="card-header-custom <?= $priority; ?>">
-                <div class="d-flex justify-content-between align-items-center">
-                    <span class="card-title-custom">Ticket# <?= $id; ?></span>
-                    <span class="priority-label <?= $priority; ?>"><?= ucfirst($priority); ?> Priority</span>
-                </div>
-                <span class="posted-time">Posted at <?= $created_at; ?></span>
-            </div>
-            <div class="card-body-custom">
-                <p class="card-title-custom"><?= $title; ?></p>
-                <p class="card-text-custom"><?= $content; ?></p>
-                <?php if ($image_present || $image): ?>
-                    <p><a href="#" data-bs-toggle="modal" data-bs-target="#imageModal<?= $id; ?>">Lihat Gambar</a></p>
-                <?php endif; ?>
-            </div>
-            <div class="card-footer-custom">
-                <div class="reviewed-by">
-                    <div class="created-by">
-                        <img src="People.png" alt="Avatar">
-                        <p class="card-text-custom"><strong>Created by <?= $ticket['created_by']; ?></strong></p>
+                {% for ticket in tickets %}
+                    <div class="card-custom" data-status="{{ ticket.status|lower }}" data-priority="{{ ticket.priority|lower }}">
+                        <div class="card-header-custom {{ ticket.priority|lower }}">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="card-title-custom">Ticket# {{ ticket.id }}</span>
+                                <span class="priority-label {{ ticket.priority|lower }}">{{ ticket.priority|capitalize }} Priority</span>
+                            </div>
+                            <span class="posted-time">Posted at {{ ticket.createdAt|date('Y-m-d H:i') }}</span>
+                        </div>
+                        <div class="card-body-custom">
+                            <p class="card-title-custom">{{ ticket.title }}</p>
+                            <p class="card-text-custom">
+                                {% set content = ticket.content %}
+                                <p class="card-text-custom">{{ ticket.content|raw }}</p>
+                                        {% if ticket.image %}
+                                            <p><a href="#" data-bs-toggle="modal" data-bs-target="#imageModal{{ ticket.id }}">Lihat Gambar</a></p>
+                                        {% endif %}
+                            </p>
+                        </div>
+                        <div class="card-footer-custom">
+                            <div class="reviewed-by">
+                                <div class="created-by">
+                                    <img src="/uploads/People.png" alt="Avatar">
+                                    <p class="card-text-custom"><strong>Created by {{ ticket.createdBy }}</strong></p>
+                                </div>
+                                {% if ticket.reviewedBy %}
+                                    <div class="created-by">
+                                        <img src="/uploads/People.png" alt="Avatar">
+                                        <p class="card-text-custom"><strong>Reviewed by {{ ticket.reviewedBy }}</strong></p>
+                                    </div>
+                                {% endif %}
+                            </div>
+                            <a href="{{ path('ticket_show', { 'id': ticket.id }) }}" class="open-ticket-link">Open Ticket</a>
+                        </div>
                     </div>
-                    <div class="created-by">
-                        <img src="People.png" alt="Avatar">
-                        <p class="card-text-custom"><strong>Assigned Admins: <?= $ticket['assigned_to']; ?></strong></p>
-                    </div>
-                </div>
-                <a href="detail.php?id=<?= $ticket['id']; ?>" class="open-ticket-link">Open Ticket</a>
-            </div>
-        </div>
-        <!-- Modal for Image -->
-        <?php if ($image_present || $image): ?>
-        <div class="modal fade" id="imageModal<?= $id; ?>" tabindex="-1" aria-labelledby="imageModalLabel<?= $id; ?>" aria-hidden="true">
-            <div class="modal-dialog">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title" id="imageModalLabel<?= $id; ?>">Image for Ticket# <?= $id; ?></h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                    <div class="modal-body">
-                        <?php if ($image_present): ?>
-                            <img src="<?= $matches[1]; ?>" class="img-fluid" alt="Ticket Image">
-                        <?php elseif ($image): ?>
-                            <img src="<?= $image; ?>" class="img-fluid" alt="Ticket Image">
-                        <?php endif; ?>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <?php endif; ?>
-        <?php 
-            } 
-        } else {
-            echo "<p>No tickets found.</p>";
-        }
-        ?>
+
+                    <!-- Modal for Image -->
+                    {% if content|raw matches '/<img[^>]+src="([^">]+)"/i' %}
+                        <div class="modal fade" id="imageModal{{ ticket.id }}" tabindex="-1" aria-labelledby="imageModalLabel{{ ticket.id }}" aria-hidden="true">
+                            <div class="modal-dialog">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title" id="imageModalLabel{{ ticket.id }}">Image for Ticket# {{ ticket.id }}</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <img src="{{ ticket.image }}" class="img-fluid" alt="Ticket Image">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    {% endif %}
+                {% else %}
+                    <p>No tickets found.</p>
+                {% endfor %}
             </div>
         </div>
 
         <div id="new-tickets" class="tab-content">
             <div class="card-custom-container">
-            <?php 
-                $tickets = mysqli_query($conn, "SELECT * FROM tickets WHERE status = 'Created' ORDER BY id ASC");
+                {% for ticket in tickets if ticket.status == 'Created' %}
+                    <div class="card-custom" data-status="{{ ticket.status }}" data-priority="{{ ticket.priority }}">
+                        <div class="card-header-custom {{ ticket.priority }}">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="card-title-custom">Ticket# {{ ticket.id }}</span>
+                                <span class="priority-label {{ ticket.priority }}">{{ ticket.priority|capitalize }} Priority</span>
+                            </div>
+                            <span class="posted-time">Posted at {{ ticket.createdAt|date('Y-m-d H:i') }}</span>
+                        </div>
+                        <div class="card-body-custom">
+                            <p class="card-title-custom">{{ ticket.title }}</p>
+                            <p class="card-text-custom">{{ ticket.content|raw }}</p>
+                            {% if ticket.image %}
+                                <p><a href="#" data-bs-toggle="modal" data-bs-target="#imageModal{{ ticket.id }}">Lihat Gambar</a></p>
+                            {% endif %}
+                        </div>
+                        <div class="card-footer-custom">
+                            <div class="reviewed-by">
+                                <div class="created-by">
+                                    <img src="People.png" alt="Avatar">
+                                    <p class="card-text-custom"><strong>Created by {{ ticket.created_by|default('Dummy Creator') }}</strong></p>
+                                </div>
+                                <div class="created-by">
+                                    <img src="People.png" alt="Avatar">
+                                    <p class="card-text-custom"><strong>Reviewed by {{ ticket.reviewed_by|default('Dummy Reviewer') }}</strong></p>
+                                </div>
+                            </div>
+                            <a href="{{ path('ticket_detail', { id: ticket.id }) }}" class="open-ticket-link">Open Ticket</a>
+                        </div>
+                    </div>
 
-                if (mysqli_num_rows($tickets) > 0) {
-                    while ($ticket = mysqli_fetch_assoc($tickets)) {
-                        $id = $ticket['id'];
-                        $priority = $ticket['priority'];
-                        $status = $ticket['status'];
-                        $title = $ticket['title'];
-                        $content = $ticket['content'];
-                        $created_at = $ticket['created_at'];
-                        $created_by = isset($ticket['created_by']) ? $ticket['created_by'] : 'Dummy Creator';
-                        $reviewed_by = isset($ticket['reviewed_by']) ? $ticket['reviewed_by'] : 'Dummy Reviewer';
-                        $image = $ticket['image']; // Get the image path
-
-                        // New Logic: Check for TinyMCE images
-                        $image_present = false;
-                        if (preg_match('/<img[^>]+src="([^">]+)"/i', $content, $matches)) {
-                            $image_present = true;
-                            // Replace all image tags with a single "Lihat Gambar" link if not already present
-                            $content = preg_replace('/<img[^>]+>/', '', $content); // Remove all image tags
-                            
-                        }
-                ?>
-                <div class="card-custom" data-status="<?= $status; ?>" data-priority="<?= $priority; ?>">
-                    <div class="card-header-custom <?= $priority; ?>">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <span class="card-title-custom">Ticket# <?= $id; ?></span>
-                            <span class="priority-label <?= $priority; ?>"><?= ucfirst($priority); ?> Priority</span>
-                        </div>
-                        <span class="posted-time">Posted at <?= $created_at; ?></span>
-                    </div>
-                    <div class="card-body-custom">
-                        <p class="card-title-custom"><?= $title; ?></p>
-                        <p class="card-text-custom"><?= $content; ?></p>
-                        <?php if ($image_present || $image): ?>
-                            <p><a href="#" data-bs-toggle="modal" data-bs-target="#imageModal<?= $id; ?>">Lihat Gambar</a></p>
-                        <?php endif; ?>
-                    </div>
-                    <div class="card-footer-custom">
-                        <div class="reviewed-by">
-                            <div class="created-by">
-                                <img src="People.png" alt="Avatar">
-                                <p class="card-text-custom"><strong>Created by <?= $created_by; ?></strong></p>
-                            </div>
-                            <div class="created-by">
-                                <img src="People.png" alt="Avatar">
-                                <p class="card-text-custom"><strong>Reviewed by <?= $reviewed_by; ?></strong></p>
+                    <!-- Modal for Image -->
+                    {% if ticket.image %}
+                        <div class="modal fade" id="imageModal{{ ticket.id }}" tabindex="-1" aria-labelledby="imageModalLabel{{ ticket.id }}" aria-hidden="true">
+                            <div class="modal-dialog">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title" id="imageModalLabel{{ ticket.id }}">Image for Ticket# {{ ticket.id }}</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <img src="{{ ticket.image }}" class="img-fluid" alt="Ticket Image">
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                        <a href="detail.php?id=<?= $id; ?>" class="open-ticket-link">Open Ticket</a>
-                    </div>
-                </div>
-                <!-- Modal for Image -->
-                <?php if ($image_present || $image): ?>
-                <div class="modal fade" id="imageModal<?= $id; ?>" tabindex="-1" aria-labelledby="imageModalLabel<?= $id; ?>" aria-hidden="true">
-                    <div class="modal-dialog">
-                        <div class="modal-content">
-                            <div class="modal-header">
-                                <h5 class="modal-title" id="imageModalLabel<?= $id; ?>">Image for Ticket# <?= $id; ?></h5>
-                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                            </div>
-                            <div class="modal-body">
-                                <?php if ($image_present): ?>
-                                    <img src="<?= $matches[1]; ?>" class="img-fluid" alt="Ticket Image">
-                                <?php elseif ($image): ?>
-                                    <img src="<?= $image; ?>" class="img-fluid" alt="Ticket Image">
-                                <?php endif; ?>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <?php endif; ?>
-                <?php 
-                    }
-                } else {
-                    echo "<p>No new tickets found.</p>";
-                }
-                ?>
+                    {% endif %}
+                {% else %}
+                    <p>No tickets found.</p>
+                {% endfor %}
             </div>
         </div>
 
         <div id="ongoing-tickets" class="tab-content">
             <div class="card-custom-container">
                 <!-- AJAX Loaded Content -->
-                <?php 
-                $tickets = mysqli_query($conn, "SELECT * FROM tickets WHERE status = 'In Progress' ORDER BY id ASC");
+                {% for ticket in tickets if ticket.status == 'In Progress' %}
+                    <div class="card-custom" data-status="{{ ticket.status|lower }}" data-priority="{{ ticket.priority|lower }}">
+                        <div class="card-header-custom {{ ticket.priority|lower }}">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="card-title-custom">Ticket# {{ ticket.id }}</span>
+                                <span class="priority-label {{ ticket.priority|lower }}">{{ ticket.priority|capitalize }} Priority</span>
+                            </div>
+                            <span class="posted-time">Posted at {{ ticket.createdAt|date('Y-m-d H:i') }}</span>
+                        </div>
+                        <div class="card-body-custom">
+                            <p class="card-title-custom">{{ ticket.title }}</p>
+                            <p class="card-text-custom">{{ ticket.content|raw }}</p>
+                            {% if ticket.image %}
+                                <p><a href="#" data-bs-toggle="modal" data-bs-target="#imageModal{{ ticket.id }}">Lihat Gambar</a></p>
+                            {% endif %}
+                        </div>
+                        <div class="card-footer-custom">
+                            <div class="reviewed-by">
+                                <div class="created-by">
+                                    <img src="People.png" alt="Avatar">
+                                    <p class="card-text-custom"><strong>Created by {{ ticket.createdBy|default('Dummy Creator') }}</strong></p>
+                                </div>
+                                {% if ticket.reviewedBy %}
+                                    <div class="created-by">
+                                        <img src="People.png" alt="Avatar">
+                                        <p class="card-text-custom"><strong>Reviewed by {{ ticket.reviewedBy|default('Dummy Reviewer') }}</strong></p>
+                                    </div>
+                                {% endif %}
+                            </div>
+                            <a href="{{ path('ticket_show', { 'id': ticket.id }) }}" class="open-ticket-link">Open Ticket</a>
+                        </div>
+                    </div>
 
-                if (mysqli_num_rows($tickets) > 0) {
-                    while ($ticket = mysqli_fetch_assoc($tickets)) {
-                        $id = $ticket['id'];
-                        $priority = $ticket['priority'];
-                        $status = $ticket['status'];
-                        $title = $ticket['title'];
-                        $content = $ticket['content'];
-                        $created_at = $ticket['created_at'];
-                        $created_by = isset($ticket['created_by']) ? $ticket['created_by'] : 'Dummy Creator';
-                        $reviewed_by = isset($ticket['reviewed_by']) ? $ticket['reviewed_by'] : 'Dummy Reviewer';
-                        $image = $ticket['image']; // Get the image path
-
-                        // New Logic: Check for TinyMCE images
-                        $image_present = false;
-                        if (preg_match('/<img[^>]+src="([^">]+)"/i', $content, $matches)) {
-                            $image_present = true;
-                            // Replace all image tags with a single "Lihat Gambar" link if not already present
-                            $content = preg_replace('/<img[^>]+>/', '', $content); // Remove all image tags
-                            
-                        }
-                ?>
-                <div class="card-custom" data-status="<?= $status; ?>" data-priority="<?= $priority; ?>">
-                    <div class="card-header-custom <?= $priority; ?>">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <span class="card-title-custom">Ticket# <?= $id; ?></span>
-                            <span class="priority-label <?= $priority; ?>"><?= ucfirst($priority); ?> Priority</span>
-                        </div>
-                        <span class="posted-time">Posted at <?= $created_at; ?></span>
-                    </div>
-                    <div class="card-body-custom">
-                        <p class="card-title-custom"><?= $title; ?></p>
-                        <p class="card-text-custom"><?= $content; ?></p>
-                        <?php if ($image_present || $image): ?>
-                            <p><a href="#" data-bs-toggle="modal" data-bs-target="#imageModal<?= $id; ?>">Lihat Gambar</a></p>
-                        <?php endif; ?>
-                    </div>
-                    <div class="card-footer-custom">
-                        <div class="reviewed-by">
-                            <div class="created-by">
-                                <img src="People.png" alt="Avatar">
-                                <p class="card-text-custom"><strong>Created by <?= $created_by; ?></strong></p>
-                            </div>
-                            <div class="created-by">
-                                <img src="People.png" alt="Avatar">
-                                <p class="card-text-custom"><strong>Reviewed by <?= $reviewed_by; ?></strong></p>
+                    <!-- Modal for Image -->
+                    {% if ticket.image %}
+                        <div class="modal fade" id="imageModal{{ ticket.id }}" tabindex="-1" aria-labelledby="imageModalLabel{{ ticket.id }}" aria-hidden="true">
+                            <div class="modal-dialog">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title" id="imageModalLabel{{ ticket.id }}">Image for Ticket# {{ ticket.id }}</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <img src="{{ ticket.image }}" class="img-fluid" alt="Ticket Image">
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                        <a href="detail.php?id=<?= $id; ?>" class="open-ticket-link">Open Ticket</a>
-                    </div>
-                </div>
-                <!-- Modal for Image -->
-                <?php if ($image_present || $image): ?>
-                <div class="modal fade" id="imageModal<?= $id; ?>" tabindex="-1" aria-labelledby="imageModalLabel<?= $id; ?>" aria-hidden="true">
-                    <div class="modal-dialog">
-                        <div class="modal-content">
-                            <div class="modal-header">
-                                <h5 class="modal-title" id="imageModalLabel<?= $id; ?>">Image for Ticket# <?= $id; ?></h5>
-                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                            </div>
-                            <div class="modal-body">
-                                <?php if ($image_present): ?>
-                                    <img src="<?= $matches[1]; ?>" class="img-fluid" alt="Ticket Image">
-                                <?php elseif ($image): ?>
-                                    <img src="<?= $image; ?>" class="img-fluid" alt="Ticket Image">
-                                <?php endif; ?>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <?php endif; ?>
-                <?php 
-                    }
-                } else {
-                    echo "<p>No ongoing tickets found.</p>";
-                }
-                ?>
+                    {% endif %}
+                {% else %}
+                    <p>No ongoing tickets found.</p>
+                {% endfor %}
             </div>
         </div>
 
         <div id="resolved-tickets" class="tab-content">
             <div class="card-custom-container">
                 <!-- AJAX Loaded Content -->
-                <?php 
-                $tickets = mysqli_query($conn, "SELECT * FROM tickets WHERE status = 'Validated' ORDER BY id ASC");
+                {% for ticket in tickets if ticket.status == 'Validated' %}
+                    <div class="card-custom" data-status="{{ ticket.status|lower }}" data-priority="{{ ticket.priority|lower }}">
+                        <div class="card-header-custom {{ ticket.priority|lower }}">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="card-title-custom">Ticket# {{ ticket.id }}</span>
+                                <span class="priority-label {{ ticket.priority|lower }}">{{ ticket.priority|capitalize }} Priority</span>
+                            </div>
+                            <span class="posted-time">Posted at {{ ticket.createdAt|date('Y-m-d H:i') }}</span>
+                        </div>
+                        <div class="card-body-custom">
+                            <p class="card-title-custom">{{ ticket.title }}</p>
+                            <p class="card-text-custom">{{ ticket.content|raw }}</p>
+                            {% if ticket.image %}
+                                <p><a href="#" data-bs-toggle="modal" data-bs-target="#imageModal{{ ticket.id }}">Lihat Gambar</a></p>
+                            {% endif %}
+                        </div>
+                        <div class="card-footer-custom">
+                            <div class="reviewed-by">
+                                <div class="created-by">
+                                    <img src="People.png" alt="Avatar">
+                                    <p class="card-text-custom"><strong>Created by {{ ticket.createdBy|default('Dummy Creator') }}</strong></p>
+                                </div>
+                                {% if ticket.reviewedBy %}
+                                    <div class="created-by">
+                                        <img src="People.png" alt="Avatar">
+                                        <p class="card-text-custom"><strong>Reviewed by {{ ticket.reviewedBy|default('Dummy Reviewer') }}</strong></p>
+                                    </div>
+                                {% endif %}
+                            </div>
+                            <a href="{{ path('ticket_show', { 'id': ticket.id }) }}" class="open-ticket-link">Open Ticket</a>
+                        </div>
+                    </div>
 
-                if (mysqli_num_rows($tickets) > 0) {
-                    while ($ticket = mysqli_fetch_assoc($tickets)) {
-                        $id = $ticket['id'];
-                        $priority = $ticket['priority'];
-                        $status = $ticket['status'];
-                        $title = $ticket['title'];
-                        $content = $ticket['content'];
-                        $created_at = $ticket['created_at'];
-                        $created_by = isset($ticket['created_by']) ? $ticket['created_by'] : 'Dummy Creator';
-                        $reviewed_by = isset($ticket['reviewed_by']) ? $ticket['reviewed_by'] : 'Dummy Reviewer';
-                        $image = $ticket['image']; // Get the image path
-
-                        // New Logic: Check for TinyMCE images
-                        $image_present = false;
-                        if (preg_match('/<img[^>]+src="([^">]+)"/i', $content, $matches)) {
-                            $image_present = true;
-                            // Replace all image tags with a single "Lihat Gambar" link if not already present
-                            $content = preg_replace('/<img[^>]+>/', '', $content); // Remove all image tags
-                            
-                        }
-                ?>
-                <div class="card-custom" data-status="<?= $status; ?>" data-priority="<?= $priority; ?>">
-                    <div class="card-header-custom <?= $priority; ?>">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <span class="card-title-custom">Ticket# <?= $id; ?></span>
-                            <span class="priority-label <?= $priority; ?>"><?= ucfirst($priority); ?> Priority</span>
-                        </div>
-                        <span class="posted-time">Posted at <?= $created_at; ?></span>
-                    </div>
-                    <div class="card-body-custom">
-                        <p class="card-title-custom"><?= $title; ?></p>
-                        <p class="card-text-custom"><?= $content; ?></p>
-                        <?php if ($image_present || $image): ?>
-                            <p><a href="#" data-bs-toggle="modal" data-bs-target="#imageModal<?= $id; ?>">Lihat Gambar</a></p>
-                        <?php endif; ?>
-                    </div>
-                    <div class="card-footer-custom">
-                        <div class="reviewed-by">
-                            <div class="created-by">
-                                <img src="People.png" alt="Avatar">
-                                <p class="card-text-custom"><strong>Created by <?= $created_by; ?></strong></p>
-                            </div>
-                            <div class="created-by">
-                                <img src="People.png" alt="Avatar">
-                                <p class="card-text-custom"><strong>Reviewed by <?= $reviewed_by; ?></strong></p>
+                    <!-- Modal for Image -->
+                    {% if ticket.image %}
+                        <div class="modal fade" id="imageModal{{ ticket.id }}" tabindex="-1" aria-labelledby="imageModalLabel{{ ticket.id }}" aria-hidden="true">
+                            <div class="modal-dialog">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title" id="imageModalLabel{{ ticket.id }}">Image for Ticket# {{ ticket.id }}</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <img src="{{ ticket.image }}" class="img-fluid" alt="Ticket Image">
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                        <a href="detail.php?id=<?= $id; ?>" class="open-ticket-link">Open Ticket</a>
-                    </div>
-                </div>
-                <!-- Modal for Image -->
-                <?php if ($image_present || $image): ?>
-                <div class="modal fade" id="imageModal<?= $id; ?>" tabindex="-1" aria-labelledby="imageModalLabel<?= $id; ?>" aria-hidden="true">
-                    <div class="modal-dialog">
-                        <div class="modal-content">
-                            <div class="modal-header">
-                                <h5 class="modal-title" id="imageModalLabel<?= $id; ?>">Image for Ticket# <?= $id; ?></h5>
-                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                            </div>
-                            <div class="modal-body">
-                                <?php if ($image_present): ?>
-                                    <img src="<?= $matches[1]; ?>" class="img-fluid" alt="Ticket Image">
-                                <?php elseif ($image): ?>
-                                    <img src="<?= $image; ?>" class="img-fluid" alt="Ticket Image">
-                                <?php endif; ?>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <?php endif; ?>
-                <?php 
-                    }
-                } else {
-                    echo "<p>No resolved tickets found.</p>";
-                }
-                ?>
+                    {% endif %}
+                {% else %}
+                    <p>No resolved tickets found.</p>
+                {% endfor %}
             </div>
         </div>
 
-        <?php if ($role == 'admin'): ?>
-        <div id="my-tickets" class="tab-content">
-            <div class="card-custom-container">
-                <!-- AJAX Loaded Content -->
-                <?php 
-                $tickets = mysqli_query($conn, "SELECT * FROM tickets WHERE assigned_to = '$username' ORDER BY id ASC");
+        {#{% if role == 'admin' %}#}
+            <div id="my-tickets" class="tab-content">
+                <div class="card-custom-container">
+                    <!-- AJAX Loaded Content -->
+                    {% for ticket in tickets if ticket.getAssignedTo() is not null and ticket.getAssignedTo().username == username %}
+                        <div class="card-custom" data-status="{{ ticket.status|lower }}" data-priority="{{ ticket.priority|lower }}">
+                            <div class="card-header-custom {{ ticket.priority|lower }}">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="card-title-custom">Ticket# {{ ticket.id }}</span>
+                                    <span class="priority-label {{ ticket.priority|lower }}">{{ ticket.priority|capitalize }} Priority</span>
+                                </div>
+                                <span class="posted-time">Posted at {{ ticket.createdAt|date('Y-m-d H:i') }}</span>
+                            </div>
+                            <div class="card-body-custom">
+                                <p class="card-title-custom">{{ ticket.title }}</p>
+                                <p class="card-text-custom">{{ ticket.content|raw }}</p>
+                                {% if ticket.image %}
+                                    <p><a href="#" data-bs-toggle="modal" data-bs-target="#imageModal{{ ticket.id }}">Lihat Gambar</a></p>
+                                {% endif %}
+                            </div>
+                            <div class="card-footer-custom">
+                                <div class="reviewed-by">
+                                    <div class="created-by">
+                                        <img src="People.png" alt="Avatar">
+                                        <p class="card-text-custom"><strong>Created by {{ ticket.created_by|default('Dummy Creator') }}</strong></p>
+                                    </div>
+                                    {% if ticket.reviewed_by %}
+                                        <div class="created-by">
+                                            <img src="People.png" alt="Avatar">
+                                            <p class="card-text-custom"><strong>Reviewed by {{ ticket.reviewed_by|default('Dummy Reviewer') }}</strong></p>
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                <a href="{{ path('ticket_show', { 'id': ticket.id }) }}" class="open-ticket-link">Open Ticket</a>
+                            </div>
+                        </div>
 
-                if (mysqli_num_rows($tickets) > 0) {
-                    while ($ticket = mysqli_fetch_assoc($tickets)) {
-                        $id = $ticket['id'];
-                        $priority = $ticket['priority'];
-                        $status = $ticket['status'];
-                        $title = $ticket['title'];
-                        $content = $ticket['content'];
-                        $created_at = $ticket['created_at'];
-                        $created_by = isset($ticket['created_by']) ? $ticket['created_by'] : 'Dummy Creator';
-                        $reviewed_by = isset($ticket['reviewed_by']) ? $ticket['reviewed_by'] : 'Dummy Reviewer';
-                        $image = $ticket['image']; // Get the image path
-
-                        // New Logic: Check for TinyMCE images
-                        $image_present = false;
-                        if (preg_match('/<img[^>]+src="([^">]+)"/i', $content, $matches)) {
-                            $image_present = true;
-                            // Replace all image tags with a single "Lihat Gambar" link if not already present
-                            $content = preg_replace('/<img[^>]+>/', '', $content); // Remove all image tags
-                            
-                        }
-                ?>
-                <div class="card-custom" data-status="<?= $status; ?>" data-priority="<?= $priority; ?>">
-                    <div class="card-header-custom <?= $priority; ?>">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <span class="card-title-custom">Ticket# <?= $id; ?></span>
-                            <span class="priority-label <?= $priority; ?>"><?= ucfirst($priority); ?> Priority</span>
-                        </div>
-                        <span class="posted-time">Posted at <?= $created_at; ?></span>
-                    </div>
-                    <div class="card-body-custom">
-                        <p class="card-title-custom"><?= $title; ?></p>
-                        <p class="card-text-custom"><?= $content; ?></p>
-                        <?php if ($image_present || $image): ?>
-                            <p><a href="#" data-bs-toggle="modal" data-bs-target="#imageModal<?= $id; ?>">Lihat Gambar</a></p>
-                        <?php endif; ?>
-                    </div>
-                    <div class="card-footer-custom">
-                        <div class="reviewed-by">
-                            <div class="created-by">
-                                <img src="People.png" alt="Avatar">
-                                <p class="card-text-custom"><strong>Created by <?= $created_by; ?></strong></p>
+                        <!-- Modal for Image -->
+                        {% if ticket.image %}
+                            <div class="modal fade" id="imageModal{{ ticket.id }}" tabindex="-1" aria-labelledby="imageModalLabel{{ ticket.id }}" aria-hidden="true">
+                                <div class="modal-dialog">
+                                    <div class="modal-content">
+                                        <div class="modal-header">
+                                            <h5 class="modal-title" id="imageModalLabel{{ ticket.id }}">Image for Ticket# {{ ticket.id }}</h5>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                        </div>
+                                        <div class="modal-body">
+                                            <img src="{{ ticket.image }}" class="img-fluid" alt="Ticket Image">
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="created-by">
-                                <img src="People.png" alt="Avatar">
-                                <p class="card-text-custom"><strong>Reviewed by <?= $reviewed_by; ?></strong></p>
-                            </div>
-                        </div>
-                        <a href="detail.php?id=<?= $id; ?>" class="open-ticket-link">Open Ticket</a>
-                    </div>
+                        {% endif %}
+                    {% else %}
+                        <p>No tickets found.</p>
+                    {% endfor %}
                 </div>
-                <!-- Modal for Image -->
-                <?php if ($image_present || $image): ?>
-                <div class="modal fade" id="imageModal<?= $id; ?>" tabindex="-1" aria-labelledby="imageModalLabel<?= $id; ?>" aria-hidden="true">
-                    <div class="modal-dialog">
-                        <div class="modal-content">
-                            <div class="modal-header">
-                                <h5 class="modal-title" id="imageModalLabel<?= $id; ?>">Image for Ticket# <?= $id; ?></h5>
-                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                            </div>
-                            <div class="modal-body">
-                                <?php if ($image_present): ?>
-                                    <img src="<?= $matches[1]; ?>" class="img-fluid" alt="Ticket Image">
-                                <?php elseif ($image): ?>
-                                    <img src="<?= $image; ?>" class="img-fluid" alt="Ticket Image">
-                                <?php endif; ?>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <?php endif; ?>
-                <?php 
-                    }
-                } else {
-                    echo "<p>No tickets found.</p>";
-                }
-                ?>
             </div>
-        </div>
-        <?php endif; ?>
+       {# {% endif %} #}
+
     </div>
 
     <div class="modal fade" id="newTicketModal" tabindex="-1" aria-labelledby="newTicketModalLabel" aria-hidden="true">
@@ -1332,11 +1069,11 @@ $search_text = isset($_GET['search']) ? $_GET['search'] : '';
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <form method="POST" action="logic.php" onsubmit="return handleFormSubmit()" enctype="multipart/form-data">
-                    <input type="hidden" name="action" value="create">
+                <form id="create-ticket-form" method="POST" enctype="multipart/form-data">
+                <input type="hidden" name="_token" value="{{ csrf_token('ticket_item') }}">
                     <div class="mb-3">
                         <label for="department" class="form-label">Department <span class="text-danger">*</span></label>
-                        <select class="form-select select2" id="department" name="department" required>
+                        <select class="form-select select2" id="department" name="ticket[department]" required>
                             <option selected>Select an option</option>
                             <option value="HR">HR</option>
                             <option value="IT">IT</option>
@@ -1351,16 +1088,16 @@ $search_text = isset($_GET['search']) ? $_GET['search'] : '';
                     <div class="row">
                         <div class="mb-3 col-md-6">
                             <label for="type" class="form-label">Type <span class="text-danger">*</span></label>
-                            <select class="form-select select2" id="type" name="type" required>
+                            <select class="form-select select2" id="type" name="ticket[type]" required>
                                 <option selected>Select an option</option>
                                 <option value="Bug">Bug</option>
                                 <option value="Feature">Feature</option>
-                                <option value="Task">Other</option>
+                                <option value="Task">Task</option>
                             </select>
                         </div>
                         <div class="mb-3 col-md-6">
                             <label for="priority" class="form-label">Priority <span class="text-danger">*</span></label>
-                            <select class="form-select select2" id="priority" name="priority" required>
+                            <select class="form-select select2" id="priority" name="ticket[priority]" required>
                                 <option selected>Select an option</option>
                                 <option value="low">Low</option>
                                 <option value="medium">Medium</option>
@@ -1370,23 +1107,17 @@ $search_text = isset($_GET['search']) ? $_GET['search'] : '';
                     </div>
                     <div class="mb-3">
                         <label for="ticketTitle" class="form-label">Ticket title <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control" id="ticketTitle" name="title" required>
+                        <input type="text" class="form-control" id="ticketTitle" name="ticket[title]" required>
                     </div>
-                    
                     <div class="mb-3">
                         <label for="ticketContent" class="form-label">Content <span class="text-danger">*</span></label>
-                        
-                        <textarea class="tinymce-editor" id="ticketContent" name="content"></textarea>
-                        <input type="hidden" name="content" id="contentInput">
+                        <textarea class="tinymce-editor" id="ticketContent" name="ticket[content]"></textarea>
                     </div>
-
-                    <!-- Image Upload Input -->
                     <div class="mb-3">
                         <label for="ticketImage" class="form-label">Upload Image</label>
-                        <input type="file" class="form-control" id="ticketImage" name="image">
+                        <input type="file" id="ticketImage" name="ticket[image]" class="form-control">
                     </div>
-
-                    <button type="submit" class="btn btn-primary">Create</button>
+                    <button type="submit" class="btn btn-primary" id="create-ticket-btn">Create</button>
                 </form>
             </div>
         </div>
@@ -1394,164 +1125,227 @@ $search_text = isset($_GET['search']) ? $_GET['search'] : '';
 </div>
 
 
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
     <script>
-    document.addEventListener("DOMContentLoaded", function() {
-        const filterToggle = document.getElementById("filterToggle");
-        const filterContent = document.getElementById("filterContent");
-        const searchBox = document.getElementById("search-box");
-        const priorityDropdown = document.getElementById('priorityDropdown');
-        const departmentDropdown = document.getElementById('departmentDropdown');
-        const typeDropdown = document.getElementById('typeDropdown');
-        const responsibleDropdown = document.getElementById('responsibleDropdown');
-        const weekDropdown = document.getElementById('weekDropdown');
-        const statusDropdown = document.getElementById('statusDropdown');
-        
+        document.addEventListener("DOMContentLoaded", function() {
+            const filterToggle = document.getElementById("filterToggle");
+            const filterContent = document.getElementById("filterContent");
+            const searchBox = document.getElementById("search-box");
+            const priorityDropdown = document.getElementById('priorityDropdown');
+            const departmentDropdown = document.getElementById('departmentDropdown');
+            const typeDropdown = document.getElementById('typeDropdown');
+            const responsibleDropdown = document.getElementById('responsibleDropdown');
+            const weekDropdown = document.getElementById('weekDropdown');
+            const statusDropdown = document.getElementById('statusDropdown');
 
-        filterToggle.addEventListener("click", function() {
-            filterContent.classList.toggle("show");
+            filterToggle.addEventListener("click", function() {
+                filterContent.classList.toggle("show");
 
-            const icon = filterToggle.querySelector(".material-icons");
-            if (filterContent.classList.contains("show")) {
-                icon.textContent = "expand_less";
-            } else {
-                icon.textContent = "expand_more";
-            }
-        });
-        
-        priorityDropdown.addEventListener('change', function() {
-            filterTickets();
-        });
-
-        departmentDropdown.addEventListener('change', function() {
-            filterTickets();
-        });
-
-        typeDropdown.addEventListener('change', function() {
-            filterTickets();
-        });
-
-        responsibleDropdown.addEventListener('change', function() {
-            filterTickets();
-        });
-
-        weekDropdown.addEventListener('change', function() {
-            filterTickets();
-        });
-
-        statusDropdown.addEventListener('change', function() {
-            filterTickets();
-        });
-
-        
-        searchBox.addEventListener('input', function() {
-            filterTickets();
-        });
-
-        document.querySelectorAll('.tab-link').forEach(link => {
-            link.addEventListener('click', function (e) {
-                e.preventDefault();
-
-                document.querySelectorAll('.tab-link').forEach(tab => tab.classList.remove('active'));
-                document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-
-                this.classList.add('active');
-                const target = document.querySelector(this.dataset.target);
-                target.classList.add('active');
-
-                
-                loadTabContent(target.id);
-            });
-        });
-
-        function loadTabContent(tabId) {
-            $.ajax({
-                url: 'load_tab_content.php',
-                type: 'GET',
-                data: {
-                    tab: tabId
-                },
-                success: function(response) {
-                    $('#' + tabId + ' .card-custom-container').html(response);
+                const icon = filterToggle.querySelector(".material-icons");
+                if (filterContent.classList.contains("show")) {
+                    icon.textContent = "expand_less";
+                } else {
+                    icon.textContent = "expand_more";
                 }
             });
-        }
 
-        
-        tinymce.init({
-            selector: '#ticketContent',
-            height: 300,
-            menubar: true,
-            plugins: [
-                'advlist autolink lists link image charmap print preview anchor',
-                'searchreplace visualblocks code fullscreen',
-                'insertdatetime media table paste code help wordcount'
-            ],
-            toolbar: 'undo redo | formatselect | bold italic backcolor | \
-                    alignleft aligncenter alignright alignjustify | \
-                    bullist numlist outdent indent | removeformat | help',
-            menu: {
-                file: { title: 'File', items: 'newdocument restoredraft | preview | print' },
-                edit: { title: 'Edit', items: 'undo redo | cut copy paste | selectall | searchreplace' },
-                view: { title: 'View', items: 'code | visualaid visualblocks visualchars | preview fullscreen' },
-                insert: { title: 'Insert', items: 'link media | image imagetools | codesample template hr' },
-                format: { title: 'Format', items: 'bold italic underline strikethrough superscript subscript codeformat | styles blocks align | removeformat' },
-                tools: { title: 'Tools', items: 'spellchecker spellcheckerlanguage | code wordcount' },
-                table: { title: 'Table', items: 'inserttable tableprops deletetable | cell row column' },
-                help: { title: 'Help', items: 'help' }
-            },
-            image_title: true, 
-            automatic_uploads: true,
-            images_upload_url: 'upload_image.php', // PHP script to upload images
-            file_picker_types: 'image',
-            file_picker_callback: function (cb, value, meta) {
-                var input = document.createElement('input');
-                input.setAttribute('type', 'file');
-                input.setAttribute('accept', 'image/*');
-                input.onchange = function () {
-                    var file = this.files[0];
-                    var reader = new FileReader();
-                    reader.onload = function () {
-                        var id = 'blobid' + (new Date()).getTime();
-                        var blobCache = tinymce.activeEditor.editorUpload.blobCache;
-                        var blobInfo = blobCache.create(id, file, reader.result);
-                        blobCache.add(blobInfo);
-                        cb(blobInfo.blobUri(), { title: file.name });
-                    };
-                    reader.readAsDataURL(file);
-                };
-                input.click();
+            priorityDropdown.addEventListener('change', function() {
+                filterTickets();
+            });
+
+            departmentDropdown.addEventListener('change', function() {
+                filterTickets();
+            });
+
+            typeDropdown.addEventListener('change', function() {
+                filterTickets();
+            });
+
+            responsibleDropdown.addEventListener('change', function() {
+                filterTickets();
+            });
+
+            weekDropdown.addEventListener('change', function() {
+                filterTickets();
+            });
+
+            statusDropdown.addEventListener('change', function() {
+                filterTickets();
+            });
+
+            searchBox.addEventListener('input', function() {
+                filterTickets();
+            });
+
+            document.querySelectorAll('.tab-link').forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+
+                    document.querySelectorAll('.tab-link').forEach(tab => tab.classList.remove('active'));
+                    document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+
+                    this.classList.add('active');
+                    const target = document.querySelector(this.dataset.target);
+                    target.classList.add('active');
+
+                    loadTabContent(target.id);
+                });
+            });
+
+            function loadTabContent(tabId) {
+                $.ajax({
+                    url: 'load_tab_content.php',
+                    type: 'GET',
+                    data: {
+                        tab: tabId
+                    },
+                    success: function(response) {
+                        $('#' + tabId + ' .card-custom-container').html(response);
+                    }
+                });
             }
-        });
 
+            tinymce.init({
+                selector: '#ticketContent',
+                height: 300,
+                forced_root_block: false,
+                menubar: true,
+                plugins: [
+                    'advlist autolink lists link image charmap print preview anchor',
+                    'searchreplace visualblocks code fullscreen',
+                    'insertdatetime media table paste code help wordcount'
+                ],
+                toolbar: 'undo redo | formatselect | bold italic backcolor | \
+                        alignleft aligncenter alignright alignjustify | \
+                        bullist numlist outdent indent | removeformat | help',
+                menu: {
+                    file: { title: 'File', items: 'newdocument restoredraft | preview | print' },
+                    edit: { title: 'Edit', items: 'undo redo | cut copy paste | selectall | searchreplace' },
+                    view: { title: 'View', items: 'code | visualaid visualblocks visualchars | preview fullscreen' },
+                    insert: { title: 'Insert', items: 'link media | image imagetools | codesample template hr' },
+                    format: { title: 'Format', items: 'bold italic underline strikethrough superscript subscript codeformat | styles blocks align | removeformat' },
+                    tools: { title: 'Tools', items: 'spellchecker spellcheckerlanguage | code wordcount' },
+                    table: { title: 'Table', items: 'inserttable tableprops deletetable | cell row column' },
+                    help: { title: 'Help', items: 'help' }
+                },
+                image_title: true,
+                automatic_uploads: true,
+                images_upload_url: 'upload_image.php', // PHP script to upload images
+                file_picker_types: 'image',
+                file_picker_callback: function(cb, value, meta) {
+                    var input = document.createElement('input');
+                    input.setAttribute('type', 'file');
+                    input.setAttribute('accept', 'image/*');
+                    input.onchange = function() {
+                        var file = this.files[0];
+                        var reader = new FileReader();
+                        reader.onload = function() {
+                            var id = 'blobid' + (new Date()).getTime();
+                            var blobCache = tinymce.activeEditor.editorUpload.blobCache;
+                            var blobInfo = blobCache.create(id, file, reader.result);
+                            blobCache.add(blobInfo);
+                            cb(blobInfo.blobUri(), { title: file.name });
+                        };
+                        reader.readAsDataURL(file);
+                    };
+                    input.click();
+                }
+            });
 
-        $('.select2').select2({
-            placeholder: "Select an option",
-            allowClear: true,
-            width: 'resolve'
-        });
-
-        $('#newTicketModal').on('shown.bs.modal', function () {
             $('.select2').select2({
                 placeholder: "Select an option",
                 allowClear: true,
                 width: 'resolve'
             });
-        });
-    });
 
-    function handleFormSubmit() {
-        const content = tinymce.get("ticketContent").getContent();
-        document.querySelector("#contentInput").value = content;
-        return true;
+
+            $('#newTicketModal').on('shown.bs.modal', function() {
+                $('.select2').select2({
+                    placeholder: "Select an option",
+                    allowClear: true,
+                    width: 'resolve'
+                });
+            });
+        });
+
+        function handleFormSubmit() {
+            const content = tinymce.get("ticketContent").getContent();
+            document.querySelector("#contentInput").value = content;
+            return true;
+        }
+
+        document.querySelector("#newTicketModal form").addEventListener("submit", handleFormSubmit);
+    </script>
+
+    
+  <script>
+$(document).ready(function () {
+   $('#create-ticket-btn').on('click', function (e) {
+    e.preventDefault(); // Cegah submit default form
+
+     var formData = new FormData($('#create-ticket-form')[0]);
+
+    // Ambil konten dari TinyMCE
+     var content = tinymce.get('ticketContent').getContent();  // Get the TinyMCE content
+     formData.set('ticket[content]', content);  // Set the content in FormData
+
+    // Append file gambar secara manual jika diperlukan
+    var fileInput = document.getElementById('ticketImage');
+    if (fileInput.files.length > 0) {
+    formData.append('image', fileInput.files[0]);
+        }
+
+
+    // Debugging - lihat apa yang ada di dalam formData
+    for (var pair of formData.entries()) {
+        console.log(pair[0] + ', ' + pair[1]);
     }
 
-    document.querySelector("#newTicketModal form").addEventListener("submit", handleFormSubmit);
+    // Kirim request AJAX
+    $.ajax({
+        url: '{{ path("ticket_new") }}',
+        type: 'POST',
+        data: formData,
+        processData: false, // Jangan olah data, biarkan dalam format FormData
+        contentType: false, // Jangan set tipe konten, biarkan browser menentukan
+        success: function (response) {
+            if (response.status === 'success') {
+                alert('Ticket berhasil dibuat!');
+                $('#newTicketModal').modal('hide');
+                filterTickets(); // Memperbarui daftar tiket
+            } else {
+                alert('Pengiriman gagal: ' + response.message);
+                if (response.errors) {
+                    alert('Kesalahan: ' + response.errors.join(', '));
+                }
+            }
+        },
+        error: function (xhr) {
+            let response;
+            try {
+                response = JSON.parse(xhr.responseText);
+                if (response.errors) {
+                    alert('Pengiriman gagal: ' + response.errors.join(', '));
+                } else {
+                    alert('Kesalahan yang tidak diketahui terjadi.');
+                }
+            } catch (e) {
+                alert('Terjadi kesalahan.');
+            }
+        }
+    });
+});
+
+});
+
+
+
     </script>
 </body>
+
 </html>
 
 {% endblock %}
-

@@ -1,0 +1,142 @@
+{% extends 'base.html.twig' %}
+
+{% block body %}
+<div class="container-fluid">
+    <div class="row">
+        <!-- Ticket Detail -->
+        <div class="col-md-8">
+            <div class="card">
+                <div class="ticket-header">
+                    <a href="{{ path('ticket') }}">&#8592; Go back to tickets list</a>
+                    <div class="ticket-meta">
+                        <i class="fas fa-tag"></i>
+                        <span>{{ ticket.id }}</span>
+                    </div>
+                    <h1>{{ ticket.title }}</h1>
+                </div>
+
+                <!-- Ticket Content -->
+                <div class="ticket-content">
+                    <div class="ticket-content-wrapper">
+                        {{ ticket.content|raw }}
+                    </div>
+                    {% if ticket.image %}
+                        <!-- Display the image if the 'image' field is not empty -->
+                        <div class="ticket-image mt-3">
+                            <img src="{{ asset(ticket.image) }}" alt="Ticket Image" class="img-fluid rounded ticket-image">
+                        </div>
+                    {% endif %}
+                </div>
+
+                <!-- Tabs for Comments and Chat -->
+                <div class="tabs">
+                    <button class="active" onclick="openTab(event, 'comments')">Comments ({{ comments|length }})</button>
+                    <button onclick="openTab(event, 'chat')">Chat</button>
+                </div>
+
+                <!-- Tab Content -->
+                <div id="comments" class="tab-content active">
+                    <div class="comment-section">
+                        <!-- Add Comment Form -->
+                        {{ form_start(commentForm) }}
+                            <div class="mb-3">
+                                <label for="name" class="form-label">Your Name</label>
+                                {{ form_widget(commentForm.name, {attr: {readonly: 'readonly'}}) }}
+                            </div>
+                            {{ form_widget(commentForm.comment) }}
+
+                            <div class="action-buttons">
+                                <button type="submit" class="btn btn-primary">Add comment</button>
+                            </div>
+                        {{ form_end(commentForm) }}
+                    </div>
+
+                    <!-- Display Existing Comments -->
+                    {% for comment in comments %}
+                        <div class="comment mt-4">
+                            <div class="d-flex align-items-start">
+                                <div class="avatar me-3">
+                                    <img src="{{ asset('People.png') }}" alt="Avatar" class="rounded-circle">
+                                </div>
+                                <div class="comment-body">
+                                    <div class="comment-header">
+                                        <strong>{{ comment.name }}</strong>
+                                        <span class="text-muted">Added a comment {{ comment.createdAt|date('Y-m-d H:i') }}</span>
+                                    </div>
+                                    <div class="comment-content">
+                                        {{ comment.content|raw }}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+
+                <div id="chat" class="tab-content">
+                    <p>Chat content goes here...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="col-md-4">
+            <div class="ticket-sidebar-card">
+                <div class="sidebar-item">
+                    <div class="label">Type</div>
+                    <div class="value">
+                        <span class="badge-custom" style="color: #dc3545; background-color: #f8d7da;">
+                            <i class="fas fa-bug"></i> {{ ticket.type }}
+                        </span>
+                    </div>
+                </div>
+
+                <div class="sidebar-item">
+                    <div class="label">Priority</div>
+                    <div class="value">
+                        <span class="badge-custom" style="color: #e60000; background-color: #ffcccc;">
+                            <i class="fas fa-arrow-up"></i> {{ ticket.priority }}
+                        </span>
+                    </div>
+                </div>
+
+                <div class="sidebar-item">
+                    <div class="label">Status</div>
+                    <div class="value">
+                        <span class="badge-custom" style="color: #10b981; background-color: #d1fae5;">
+                            <i class="fas fa-check-circle"></i> {{ ticket.status }}
+                        </span>
+                    </div>
+                </div>
+
+                <div class="sidebar-item">
+                    <div class="label">Owner</div>
+                    <div class="value">
+                        <div class="avatar" style="background-color: #0d6efd;">{{ ticket.createdBy|upper|slice(0, 2) }}</div>
+                        <span>{{ ticket.createdBy }}</span>
+                    </div>
+                </div>
+
+                <div class="sidebar-item">
+                    <div class="label">Responsible</div>
+                    <div class="value">
+                        <div class="avatar" style="background-color: #20c997;">{{ ticket.reviewedBy|upper|slice(0, 2) }}</div>
+                        <span>{{ ticket.reviewedBy }}</span>
+                    </div>
+                </div>
+
+                <div class="sidebar-separator">
+                    <div class="sidebar-item small-text">
+                        <div class="label">Created:</div>
+                        <div class="value">{{ ticket.createdAt|date('Y-m-d H:i') }}</div>
+                    </div>
+
+                    <div class="sidebar-item small-text">
+                        <div class="label">Last update:</div>
+                        <div class="value">{{ ticket.updatedAt|date('Y-m-d H:i') }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
