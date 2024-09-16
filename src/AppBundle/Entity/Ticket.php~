@@ -1,0 +1,97 @@
+<?php
+
+namespace AppBundle\Entity;
+
+use Doctrine\ORM\Mapping as ORM;
+use Doctrine\Common\Collections\ArrayCollection;
+
+/**
+ * @ORM\Entity
+ * @ORM\Table(name="tickets")
+ */
+class Ticket
+{
+    /**
+     * @ORM\Id
+     * @ORM\Column(type="integer")
+     * @ORM\GeneratedValue(strategy="AUTO")
+     */
+    private $id;
+
+    /**
+     * @ORM\Column(type="string", length=100, nullable=true)
+     */
+    private $project;
+
+    /**
+     * @ORM\Column(type="string", columnDefinition="ENUM('Bug', 'Feature', 'Task')")
+     */
+    private $type;
+
+    /**
+     * @ORM\Column(type="string", columnDefinition="ENUM('low', 'medium', 'high')")
+     */
+    private $priority;
+
+    /**
+     * @ORM\Column(type="string", length=255)
+     */
+    private $title;
+
+    /**
+     * @ORM\Column(type="text")
+     */
+    private $content;
+
+    /**
+     * @ORM\Column(type="string", length=255, nullable=true)
+     */
+    private $image;
+
+    /**
+     * @ORM\Column(type="string", length=50)
+     */
+    private $createdBy;
+
+    /**
+     * @ORM\Column(type="string", length=50, nullable=true)
+     */
+    private $reviewedBy;
+
+    /**
+     * @ORM\Column(type="string", columnDefinition="ENUM('Created', 'In Progress', 'Done', 'Validated', 'Rejected')")
+     */
+    private $status = 'Created';
+
+    /**
+     * @ORM\Column(type="string", length=255, nullable=true)
+     */
+    private $assignedTo;
+
+    /**
+     * @ORM\Column(type="datetime")
+     */
+    private $createdAt;
+
+    /**
+     * @ORM\Column(type="datetime")
+     */
+    private $updatedAt;
+
+    /**
+     * @ORM\Column(type="string", length=255)
+     */
+    private $department;
+
+    /**
+     * @ORM\OneToMany(targetEntity="Comment", mappedBy="ticket")
+     */
+    private $comments;
+
+    public function __construct()
+    {
+        $this->comments = new ArrayCollection();
+    }
+
+    // Getters and setters...
+}

@@ -1,0 +1,47 @@
+<?php
+
+namespace AppBundle\Entity;
+
+use Doctrine\ORM\Mapping as ORM;
+
+/**
+ * @ORM\Entity
+ * @ORM\Table(name="comments")
+ */
+class Comment
+{
+    /**
+     * @ORM\Id
+     * @ORM\Column(type="integer")
+     * @ORM\GeneratedValue(strategy="AUTO")
+     */
+    private $id;
+
+    /**
+     * @ORM\ManyToOne(targetEntity="Ticket", inversedBy="comments")
+     * @ORM\JoinColumn(name="ticket_id", referencedColumnName="id", nullable=false)
+     */
+    private $ticket;
+
+    /**
+     * @ORM\Column(type="string", length=50, options={"default" : "Anonymous"})
+     */
+    private $name = 'Anonymous';
+
+    /**
+     * @ORM\Column(type="text")
+     */
+    private $comment;
+
+    /**
+     * @ORM\Column(type="blob", nullable=true)
+     */
+    private $image;
+
+    /**
+     * @ORM\Column(type="datetime")
+     */
+    private $createdAt;
+
+    // Getters and setters...
+}

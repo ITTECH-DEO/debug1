@@ -1,76 +1,904 @@
-{% extends 'base.html.twig' %}
+{% extends 'base.html.twig' %} {% block body %}
+<div class="container">
+  <div class="header d-flex justify-content-between align-items-center">
+    <h1>Tickets</h1>
+    <a
+      href="{{ path('logout') }}"
+      class="btn btn-danger"
+      onclick="return confirm('Are you sure you want to logout?');"
+      >Logout</a
+    >
+  </div>
 
-{% block body %}
-    <div id="wrapper">
-        <div id="container">
-            <div id="welcome">
-                <h1><span>Welcome to</span> Symfony {{ constant('Symfony\\Component\\HttpKernel\\Kernel::VERSION') }}</h1>
+  {% for type, messages in app.session.flashBag.all() %} {% for message in
+  messages %}
+  <div class="flash-message flash-message-{{ type }}">
+    {{ message }}
+  </div>
+  {% endfor %} {% endfor %} 
+
+  {% if is_granted('ROLE_ADMIN') %}
+    <div class="alert alert-info mt-3">
+        <h5><i class="material-icons">notifications_active</i> Tickets Available for Assignment</h5>
+        <form method="POST" action="{{ path('assign_tickets') }}">
+            <input type="hidden" name="admin_username" value="{{ app.user.username }}">
+            <div class="card-custom-container">
+                {% for ticket in tickets_admin %}
+                    <div class="card-custom mb-2" data-status="{{ ticket.status }}" data-priority="{{ ticket.priority }}">
+                        <div class="card-header-custom {{ ticket.priority }}">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="selected_tickets[]" value="{{ ticket.id }}">
+                                    <label class="form-check-label">
+                                        Ticket# {{ ticket.id }} - {{ ticket.title }}
+                                    </label>
+                                </div>
+                                <span class="priority-label {{ ticket.priority }}">{{ ticket.priority|capitalize }} Priority</span>
+                            </div>
+                            <span class="posted-time">Posted at {{ ticket.created_at|date('Y-m-d H:i') }}</span>
+                        </div>
+                        <div class="card-body-custom">
+                            <p class="card-title-custom">{{ ticket.title }}</p>
+                            <p class="card-text-custom">{{ ticket.content|raw }}</p>
+                            {% if ticket.image %}
+                                <p><a href="#" data-bs-toggle="modal" data-bs-target="#imageModal{{ ticket.id }}">Lihat Gambar</a></p>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <!-- Modal for Image -->
+                    {% if ticket.image %}
+                    <div class="modal fade" id="imageModal{{ ticket.id }}" tabindex="-1" aria-labelledby="imageModalLabel{{ ticket.id }}" aria-hidden="true">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title" id="imageModalLabel{{ ticket.id }}">Image for Ticket# {{ ticket.id }}</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <img src="{{ asset(ticket.image) }}" class="img-fluid" alt="Ticket Image">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                {% else %}
+                    <p>No tickets available for assignment.</p>
+                {% endfor %}
             </div>
-
-            <div id="status">
-                <p>
-                    <svg id="icon-status" width="1792" height="1792" viewBox="0 0 1792 1792" xmlns="http://www.w3.org/2000/svg"><path d="M1671 566q0 40-28 68l-724 724-136 136q-28 28-68 28t-68-28l-136-136-362-362q-28-28-28-68t28-68l136-136q28-28 68-28t68 28l294 295 656-657q28-28 68-28t68 28l136 136q28 28 28 68z" fill="#759E1A"/></svg>
-
-                    Your application is now ready. You can start working on it at:
-                    <code>{{ base_dir }}</code>
-                </p>
-            </div>
-
-            <div id="next">
-                <h2>What's next?</h2>
-                <p>
-                    <svg id="icon-book" version="1.1" xmlns="http://www.w3.org/2000/svg" x="0px" y="0px" viewBox="-12.5 9 64 64" enable-background="new -12.5 9 64 64" xml:space="preserve">
-                        <path fill="#AAA" d="M6.8,40.8c2.4,0.8,4.5-0.7,4.9-2.5c0.2-1.2-0.3-2.1-1.3-3.2l-0.8-0.8c-0.4-0.5-0.6-1.3-0.2-1.9
-                            c0.4-0.5,0.9-0.8,1.8-0.5c1.3,0.4,1.9,1.3,2.9,2.2c-0.4,1.4-0.7,2.9-0.9,4.2l-0.2,1c-0.7,4-1.3,6.2-2.7,7.5
-                            c-0.3,0.3-0.7,0.5-1.3,0.6c-0.3,0-0.4-0.3-0.4-0.3c0-0.3,0.2-0.3,0.3-0.4c0.2-0.1,0.5-0.3,0.4-0.8c0-0.7-0.6-1.3-1.3-1.3
-                            c-0.6,0-1.4,0.6-1.4,1.7s1,1.9,2.4,1.8c0.8,0,2.5-0.3,4.2-2.5c2-2.5,2.5-5.4,2.9-7.4l0.5-2.8c0.3,0,0.5,0.1,0.8,0.1
-                            c2.4,0.1,3.7-1.3,3.7-2.3c0-0.6-0.3-1.2-0.9-1.2c-0.4,0-0.8,0.3-1,0.8c-0.1,0.6,0.8,1.1,0.1,1.5c-0.5,0.3-1.4,0.6-2.7,0.4l0.3-1.3
-                            c0.5-2.6,1-5.7,3.2-5.8c0.2,0,0.8,0,0.8,0.4c0,0.2,0,0.2-0.2,0.5c-0.2,0.3-0.3,0.4-0.2,0.7c0,0.7,0.5,1.1,1.2,1.1
-                            c0.9,0,1.2-1,1.2-1.4c0-1.2-1.2-1.8-2.6-1.8c-1.5,0.1-2.8,0.9-3.7,2.1c-1.1,1.3-1.8,2.9-2.3,4.5c-0.9-0.8-1.6-1.8-3.1-2.3
-                            c-1.1-0.7-2.3-0.5-3.4,0.3c-0.5,0.4-0.8,1-1,1.6c-0.4,1.5,0.4,2.9,0.8,3.4l0.9,1c0.2,0.2,0.6,0.8,0.4,1.5c-0.3,0.8-1.2,1.3-2.1,1
-                            c-0.4-0.2-1-0.5-0.9-0.9c0.1-0.2,0.2-0.3,0.3-0.5s0.1-0.3,0.1-0.3c0.2-0.6-0.1-1.4-0.7-1.6c-0.6-0.2-1.2,0-1.3,0.8
-                            C4.3,38.4,4.7,40,6.8,40.8z M46.1,20.9c0-4.2-3.2-7.5-7.1-7.5h-3.8C34.8,10.8,32.7,9,30.2,9L-2.3,9.1c-2.8,0.1-4.9,2.4-4.9,5.4
-                            L-7,58.6c0,4.8,8.1,13.9,11.6,14.1l34.7-0.1c3.9,0,7-3.4,7-7.6L46.1,20.9z M-0.3,36.4c0-8.6,6.5-15.6,14.5-15.6
-                            c8,0,14.5,7,14.5,15.6S22.1,52,14.2,52C6.1,52-0.3,45-0.3,36.4z M42.1,65.1c0,1.8-1.5,3.1-3.1,3.1H4.6c-0.7,0-3-1.8-4.5-4.4h30.4
-                            c2.8,0,5-2.4,5-5.4V17.9h3.7c1.6,0,2.9,1.4,2.9,3.1V65.1L42.1,65.1z"/>
-                    </svg>
-
-                    Read the documentation to learn
-                    <a href="https://symfony.com/doc/{{ constant('Symfony\\Component\\HttpKernel\\Kernel::VERSION')[:3] }}/page_creation.html">
-                        How to create your first page in Symfony
-                    </a>
-                </p>
-            </div>
-
-        </div>
+            {% if tickets|length > 0 %}
+                <button type="submit" class="btn btn-success mt-3">Assign Tickets</button>
+            {% endif %}
+        </form>
     </div>
-{% endblock %}
+{% endif %}
 
-{% block stylesheets %}
+
+  <div class="card-header-controls">
+    <form id="filterForm" method="GET" action="">
+      <div class="d-flex justify-content-between align-items-start">
+        <div class="search-bar">
+          <input
+            type="text"
+            id="search-box"
+            name="search"
+            placeholder="Search for ticket"
+            value=""
+          />
+        </div>
+        <div class="filters">
+          <div class="dropdown">
+            <select
+              class="form-select"
+              id="priorityDropdown"
+              name="priority"
+              aria-label="Select Priority"
+              onchange="filterTickets();"
+            >
+              <option value="all">All Priorities</option>
+              <option value="low">Low</option>
+              <option value="medium">Medium</option>
+              <option value="high">High</option>
+            </select>
+          </div>
+          <div class="dropdown">
+            <select
+              class="form-select"
+              id="weekDropdown"
+              name="week"
+              aria-label="Select Week"
+              onchange="filterTickets();"
+            >
+              <option value="all">All Weeks</option>
+              <option value="week-1">Week 1</option>
+              <option value="week-2">Week 2</option>
+              <option value="week-3">Week 3</option>
+              <option value="week-4">Week 4</option>
+            </select>
+          </div>
+          <div class="dropdown">
+            <select
+              class="form-select"
+              id="statusDropdown"
+              name="status"
+              aria-label="Select Status"
+              onchange="filterTickets();"
+            >
+              <option value="all">All</option>
+              <option value="created">Created</option>
+              <option value="in progress">In Progress</option>
+              <option value="validated">Validated</option>
+            </select>
+          </div>
+          <button
+            type="button"
+            class="btn btn-primary"
+            data-bs-toggle="modal"
+            data-bs-target="#newTicketModal"
+          >
+            <span class="material-icons">add_circle_outline</span>
+            New Ticket
+          </button>
+          <a href="{{ path('kanban') }}" class="btn btn-secondary kanban-btn">
+            <span class="material-icons">dashboard</span>
+            Kanban Board
+          </a>
+        </div>
+      </div>
+    </form>
+
+    <div class="tabs mt-3">
+      <a href="#" class="tab-link active" data-target="#all-tickets">
+        <span class="material-icons">mail_outline</span>
+        All Tickets
+      </a>
+      <a href="#" class="tab-link" data-target="#new-tickets">
+        <span class="material-icons">fiber_new</span>
+        New
+      </a>
+      <a href="#" class="tab-link" data-target="#ongoing-tickets">
+        <span class="material-icons">autorenew</span>
+        On-Going
+      </a>
+      <a href="#" class="tab-link" data-target="#resolved-tickets">
+        <span class="material-icons">check_circle_outline</span>
+        Resolved
+      </a>
+    </div>
+  </div>
+
+  
+
+  <div id="all-tickets" class="tab-content active">
+    <div id="ticketList" class="card-custom-container">
+      
+      {% if tickets|length > 0 %}
+        {% for ticket in tickets %}
+            {# Get the necessary data from the ticket object #}
+            {% set id = ticket.id %}
+            {% set priority = ticket.priority %}
+            {% set status = ticket.status %}
+            {% set title = ticket.title %}
+            {% set content = ticket.content %}
+            {% set created_at = ticket.createdAt|date('Y-m-d H:i:s') %}
+            {% set created_by = ticket.createdBy ?: 'Dummy Creator' %}
+            {% set reviewed_by = ticket.reviewedBy ?: 'Dummy Reviewer' %}
+            {% set image = ticket.image %}
+            
+            {# Check for image presence in content using Twig #}
+            {% set image_present = false %}
+            {% if content matches '/<img[^>]+src="([^">]+)"/i' %}
+                {% set image_present = true %}
+                {% set content = content|replace({ '<img[^>]+>': '' }) %} {# Remove all image tags #}
+            {% endif %}
+
+            <div class="card-custom" data-status="{{ status }}" data-priority="{{ priority }}">
+                <div class="card-header-custom {{ priority }}">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="card-title-custom">Ticket# {{ id }}</span>
+                        <span class="priority-label {{ priority }}">{{ priority|capitalize }} Priority</span>
+                    </div>
+                    <span class="posted-time">Posted at {{ created_at }}</span>
+                </div>
+                <div class="card-body-custom">
+                    <p class="card-title-custom">{{ title }}</p>
+                    <p class="card-text-custom">{{ content|raw }}</p>
+                    {% if image_present or image %}
+                        <p><a href="#" data-bs-toggle="modal" data-bs-target="#imageModal{{ id }}">Lihat Gambar</a></p>
+                    {% endif %}
+                </div>
+                <div class="card-footer-custom">
+                    <div class="reviewed-by">
+                        <div class="created-by">
+                            <img src="{{ asset('images/People.png') }}" alt="Avatar">
+                            <p class="card-text-custom"><strong>Created by {{ created_by }}</strong></p>
+                        </div>
+                        <div class="created-by">
+                            <img src="{{ asset('images/People.png') }}" alt="Avatar">
+                            <p class="card-text-custom"><strong>Reviewed by {{ reviewed_by }}</strong></p>
+                        </div>
+                    </div>
+                    <a href="" class="open-ticket-link">Open Ticket</a>
+                </div>
+            </div>
+
+            {# Modal for Image #}
+            {% if image_present or image %}
+                <div class="modal fade" id="imageModal{{ id }}" tabindex="-1" aria-labelledby="imageModalLabel{{ id }}" aria-hidden="true">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="imageModalLabel{{ id }}">Image for Ticket# {{ id }}</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                {% if image_present %}
+                                    <img src="{{ matches[1] }}" class="img-fluid" alt="Ticket Image">
+                                {% elseif image %}
+                                    <img src="{{ image }}" class="img-fluid" alt="Ticket Image">
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+        {% endfor %}
+    {% else %}
+        <p>No tickets found.</p>
+    {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %} {% block stylesheets %}
 <style>
-    body { background: #F5F5F5; font: 18px/1.5 sans-serif; }
-    h1, h2 { line-height: 1.2; margin: 0 0 .5em; }
-    h1 { font-size: 36px; }
-    h2 { font-size: 21px; margin-bottom: 1em; }
-    p { margin: 0 0 1em 0; }
-    a { color: #0000F0; }
-    a:hover { text-decoration: none; }
-    code { background: #F5F5F5; max-width: 100px; padding: 2px 6px; word-wrap: break-word; }
-    #wrapper { background: #FFF; margin: 1em auto; max-width: 800px; width: 95%; }
-    #container { padding: 2em; }
-    #welcome, #status { margin-bottom: 2em; }
-    #welcome h1 span { display: block; font-size: 75%; }
-    #icon-status, #icon-book { float: left; height: 64px; margin-right: 1em; margin-top: -4px; width: 64px; }
-    #icon-book { display: none; }
+  body {
+    font-family: "Arial", sans-serif;
+    background-color: #f5f6fa;
+    margin: 0;
+    padding: 0;
+  }
 
-    @media (min-width: 768px) {
-        #wrapper { width: 80%; margin: 2em auto; }
-        #icon-book { display: inline-block; }
-        #status a, #next a { display: block; }
+  .container {
+    width: 90%;
+    margin: 0 auto;
+    padding: 20px 0;
+  }
 
-        @-webkit-keyframes fade-in { 0% { opacity: 0; } 100% { opacity: 1; } }
-        @keyframes fade-in { 0% { opacity: 0; } 100% { opacity: 1; } }
-        .sf-toolbar { opacity: 0; -webkit-animation: fade-in 1s .2s forwards; animation: fade-in 1s .2s forwards;}
+  .card-header-controls {
+    background-color: #fff;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    margin-bottom: 20px;
+  }
+
+  .filter-card-header {
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    margin-bottom: 20px;
+    cursor: pointer;
+  }
+
+  .filters .kanban-btn {
+    margin-left: 10px;
+  }
+
+  .filter-card-body {
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    padding: 0 20px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    margin-bottom: 20px;
+    max-height: 0;
+    overflow: hidden;
+    opacity: 0;
+    transition: max-height 0.4s ease, opacity 0.4s ease, padding 0.4s ease;
+  }
+
+  .filter-card-body.show {
+    max-height: 300px;
+    opacity: 1;
+    padding: 20px;
+  }
+
+  .search-bar input {
+    width: 100%;
+    padding: 10px 20px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 14px;
+    background-color: #f8f9fa;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+  }
+
+  .search-bar input:focus {
+    border-color: #bbb;
+    background-color: #fff;
+    box-shadow: 0 0 8px rgba(0, 0, 0, 0.2);
+  }
+
+  .filters {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .filters .dropdown {
+    margin-left: 0px;
+  }
+
+  .filters button {
+    padding: 10px 20px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #f8f9fa;
+    color: #333;
+    transition: all 0.3s ease;
+  }
+
+  .filters button:hover,
+  .filters button:focus {
+    background-color: #add8e6;
+    border-color: #bbb;
+    box-shadow: 0 0 8px rgba(0, 0, 0, 0.2);
+  }
+
+  .btn-primary {
+    background-color: #4a90e2 !important;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    transition: background-color 0.3s ease, box-shadow 0.3s ease;
+  }
+
+  .btn-primary .material-icons {
+    font-size: 20px;
+    margin-right: 5px;
+  }
+
+  .btn-primary:hover {
+    background-color: #357abd !important;
+    box-shadow: 0 0 8px rgba(0, 0, 0, 0.2);
+  }
+
+  .tabs {
+    display: flex;
+    align-items: center;
+    margin-top: 30px;
+    margin-bottom: 10px;
+    align-self: flex-end;
+    padding-top: 20px;
+    cursor: pointer;
+  }
+
+  .tabs a {
+    margin-right: 50px;
+    color: #333;
+    font-weight: bold;
+    font-size: 14px;
+    text-decoration: none;
+    padding-bottom: 5px;
+    border-bottom: 2px solid transparent;
+    display: flex;
+    align-items: center;
+    transition: all 0.3s ease;
+  }
+
+  .tabs a.active {
+    color: #8a4af3;
+    border-bottom: 2px solid #8a4af3;
+  }
+
+  .tabs a:hover {
+    transform: scale(1.1);
+    animation: animate__animated animate__pulse;
+    color: #8a4af3;
+  }
+
+  .tabs .material-icons {
+    font-size: 18px;
+    margin-right: 10px;
+  }
+
+  .card-custom-container {
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    padding: 10px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    margin-bottom: 20px;
+  }
+
+  .card-custom {
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1), 0 6px 20px rgba(0, 0, 0, 0.1);
+    margin-bottom: 20px;
+    overflow: hidden;
+    background-color: #fff;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+  }
+
+  .card-header-custom {
+    padding: 15px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-weight: bold;
+    color: #333;
+    border-bottom: 1px solid #f0f0f0;
+  }
+
+  .card-header-custom .posted-time {
+    font-size: 12px;
+    color: #ffffff;
+  }
+
+  .card-header-custom.low {
+    background-color: #23c55e;
+    color: white;
+  }
+
+  .card-header-custom.medium {
+    background-color: #ffb200;
+    color: white;
+  }
+
+  .card-header-custom.high {
+    background-color: #3b82f6;
+    color: white;
+  }
+
+  .card-body-custom {
+    padding: 20px;
+    background-color: #fff;
+    color: black;
+  }
+
+  .card-title-custom {
+    font-size: 18px;
+    font-weight: bold;
+    margin-bottom: 5px;
+  }
+
+  .card-text-custom {
+    font-size: 14px;
+    color: #777;
+  }
+
+  .priority-label {
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: bold;
+    color: white;
+    display: inline-block;
+    margin-left: 10px;
+  }
+
+  .priority-label.low {
+    background-color: #ffc107;
+    color: black;
+  }
+
+  .priority-label.medium {
+    background-color: #007bff;
+  }
+
+  .priority-label.high {
+    background-color: #dc3545;
+  }
+
+  .card-footer-custom {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 20px;
+    background-color: #f5f5f5;
+    border-top: 1px solid #f0f0f0;
+    flex-wrap: wrap;
+  }
+
+  .reviewed-by {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+  }
+
+  .reviewed-by .created-by {
+    display: flex;
+    align-items: center;
+  }
+
+  .reviewed-by img {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    margin-right: 10px;
+  }
+
+  .card-footer-custom a {
+    color: #8a4af3;
+    text-decoration: none;
+    font-weight: bold;
+  }
+
+  .priority {
+    background-color: #ff4d4f;
+    color: white;
+    padding: 2px 6px;
+    font-size: 12px;
+    border-radius: 3px;
+  }
+
+  .dropdown-item {
+    display: flex;
+    align-items: center;
+  }
+
+  .dropdown-item .status-circle {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    margin-right: 10px;
+  }
+
+  .status-circle-new {
+    background-color: #3b82f6;
+  }
+
+  .status-circle-ongoing {
+    background-color: #ffb300;
+  }
+
+  .status-circle-resolved {
+    background-color: #22c55e;
+  }
+
+  .filament-forms-component-container {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+
+  .filament-rich-editor-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #ddd;
+    padding-bottom: 10px;
+  }
+
+  .filament-rich-editor-toolbar .toolbar-buttons {
+    display: flex;
+    gap: 10px;
+  }
+
+  .filament-rich-editor-toolbar .undo-redo-buttons {
+    display: flex;
+    gap: 10px;
+  }
+
+  .filament-rich-editor-content {
+    min-height: 120px;
+    max-height: 300px;
+    overflow-y: auto;
+    word-wrap: break-word;
+    margin-top: 10px;
+    border: 1px solid #ddd;
+    padding: 10px;
+    border-radius: 6px;
+  }
+
+  .card-custom:hover {
+    transform: scale(1.05);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+    animation: animate__animated animate__pulse;
+  }
+
+  .tab-content {
+    display: none;
+  }
+
+  .tab-content.active {
+    display: block;
+    animation: animate__animated animate__fadeIn;
+  }
+
+  .select2-container {
+    width: 100% !important;
+  }
+
+  .open-ticket-link {
+    color: #8a4af3;
+    font-weight: bold;
+    text-decoration: none;
+    margin-left: 10px;
+  }
+
+  .open-ticket-link:hover {
+    text-decoration: underline;
+    color: #6a32c4;
+  }
+
+  .flash-message {
+    margin: 20px 0;
+    padding: 10px 20px;
+    background-color: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+    border-radius: 8px;
+    font-weight: bold;
+    animation: animate__animated animate__fadeIn;
+  }
+
+  .card-body-custom img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin: 10px 0;
+  }
+
+  @media (max-width: 992px) {
+    .filters {
+      flex-direction: column;
     }
+
+    .search-bar input {
+      width: 100%;
+    }
+
+    .card-custom {
+      width: 100%;
+    }
+
+    .container {
+      width: 100%;
+      padding: 10px;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .filters {
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .tabs {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+
+    .tabs a {
+      font-size: 14px;
+      margin-right: 0;
+      padding-bottom: 10px;
+    }
+  }
+
+  @media (max-width: 576px) {
+    .header {
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .filters {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .search-bar input {
+      width: 100%;
+    }
+
+    .tabs {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+
+    .filters button {
+      width: 100%;
+    }
+
+    .card-custom {
+      width: 100%;
+    }
+
+    .container {
+      width: 100%;
+      padding: 10px;
+    }
+  }
 </style>
+{% endblock %} {% block javascripts %}
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    const filterToggle = document.getElementById("filterToggle");
+    const filterContent = document.getElementById("filterContent");
+    const searchBox = document.getElementById("search-box");
+    const priorityDropdown = document.getElementById("priorityDropdown");
+    const departmentDropdown = document.getElementById("departmentDropdown");
+    const typeDropdown = document.getElementById("typeDropdown");
+    const responsibleDropdown = document.getElementById("responsibleDropdown");
+    const weekDropdown = document.getElementById("weekDropdown");
+    const statusDropdown = document.getElementById("statusDropdown");
+
+    filterToggle.addEventListener("click", function () {
+      filterContent.classList.toggle("show");
+
+      const icon = filterToggle.querySelector(".material-icons");
+      if (filterContent.classList.contains("show")) {
+        icon.textContent = "expand_less";
+      } else {
+        icon.textContent = "expand_more";
+      }
+    });
+
+    priorityDropdown.addEventListener("change", function () {
+      filterTickets();
+    });
+
+    departmentDropdown.addEventListener("change", function () {
+      filterTickets();
+    });
+
+    typeDropdown.addEventListener("change", function () {
+      filterTickets();
+    });
+
+    responsibleDropdown.addEventListener("change", function () {
+      filterTickets();
+    });
+
+    weekDropdown.addEventListener("change", function () {
+      filterTickets();
+    });
+
+    statusDropdown.addEventListener("change", function () {
+      filterTickets();
+    });
+
+    searchBox.addEventListener("input", function () {
+      filterTickets();
+    });
+
+    document.querySelectorAll(".tab-link").forEach((link) => {
+      link.addEventListener("click", function (e) {
+        e.preventDefault();
+
+        document
+          .querySelectorAll(".tab-link")
+          .forEach((tab) => tab.classList.remove("active"));
+        document
+          .querySelectorAll(".tab-content")
+          .forEach((content) => content.classList.remove("active"));
+
+        this.classList.add("active");
+        const target = document.querySelector(this.dataset.target);
+        target.classList.add("active");
+
+        loadTabContent(target.id);
+      });
+    });
+
+    function loadTabContent(tabId) {
+      $.ajax({
+        url: "load_tab_content.php",
+        type: "GET",
+        data: {
+          tab: tabId,
+        },
+        success: function (response) {
+          $("#" + tabId + " .card-custom-container").html(response);
+        },
+      });
+    }
+
+    tinymce.init({
+      selector: "#ticketContent",
+      height: 300,
+      menubar: true,
+      plugins: [
+        "advlist autolink lists link image charmap print preview anchor",
+        "searchreplace visualblocks code fullscreen",
+        "insertdatetime media table paste code help wordcount",
+      ],
+      toolbar:
+        "undo redo | formatselect | bold italic backcolor | \
+                    alignleft aligncenter alignright alignjustify | \
+                    bullist numlist outdent indent | removeformat | help",
+      menu: {
+        file: {
+          title: "File",
+          items: "newdocument restoredraft | preview | print",
+        },
+        edit: {
+          title: "Edit",
+          items: "undo redo | cut copy paste | selectall | searchreplace",
+        },
+        view: {
+          title: "View",
+          items:
+            "code | visualaid visualblocks visualchars | preview fullscreen",
+        },
+        insert: {
+          title: "Insert",
+          items: "link media | image imagetools | codesample template hr",
+        },
+        format: {
+          title: "Format",
+          items:
+            "bold italic underline strikethrough superscript subscript codeformat | styles blocks align | removeformat",
+        },
+        tools: {
+          title: "Tools",
+          items: "spellchecker spellcheckerlanguage | code wordcount",
+        },
+        table: {
+          title: "Table",
+          items: "inserttable tableprops deletetable | cell row column",
+        },
+        help: { title: "Help", items: "help" },
+      },
+      image_title: true,
+      automatic_uploads: true,
+      images_upload_url: "upload_image.php", // PHP script to upload images
+      file_picker_types: "image",
+      file_picker_callback: function (cb, value, meta) {
+        var input = document.createElement("input");
+        input.setAttribute("type", "file");
+        input.setAttribute("accept", "image/*");
+        input.onchange = function () {
+          var file = this.files[0];
+          var reader = new FileReader();
+          reader.onload = function () {
+            var id = "blobid" + new Date().getTime();
+            var blobCache = tinymce.activeEditor.editorUpload.blobCache;
+            var blobInfo = blobCache.create(id, file, reader.result);
+            blobCache.add(blobInfo);
+            cb(blobInfo.blobUri(), { title: file.name });
+          };
+          reader.readAsDataURL(file);
+        };
+        input.click();
+      },
+    });
+
+    $(".select2").select2({
+      placeholder: "Select an option",
+      allowClear: true,
+      width: "resolve",
+    });
+
+    $("#newTicketModal").on("shown.bs.modal", function () {
+      $(".select2").select2({
+        placeholder: "Select an option",
+        allowClear: true,
+        width: "resolve",
+      });
+    });
+  });
+
+  function handleFormSubmit() {
+    const content = tinymce.get("ticketContent").getContent();
+    document.querySelector("#contentInput").value = content;
+    return true;
+  }
+
+  document
+    .querySelector("#newTicketModal form")
+    .addEventListener("submit", handleFormSubmit);
+</script>
 {% endblock %}

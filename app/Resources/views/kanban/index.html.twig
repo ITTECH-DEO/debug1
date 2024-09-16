@@ -1,0 +1,540 @@
+{% extends "base.html.twig" %}
+{% block body %}
+    <div class="container">
+        <div class="header">
+            <h1 class="text-center">Kanban Board</h1>
+        </div>
+        <p class="text-center mb-4">Below is the Kanban Board for tickets configured on Help Desk</p>
+        <!-- Button to Dashboard -->
+        <div>
+            <a href="{{ path('homepage') }}" class="btn-dashboard">Dashboard</a>
+            <button type="button" id="addNewTicketButton" class="btn-add-ticket" data-bs-toggle="modal" data-bs-target="#newTicketModal">
+                Add New Ticket
+            </button>
+        </div>
+
+        <div class="kanban-board">
+            {% for column, tickets in columns %}
+                <div class="kanban-column" {% if app.user.role == 'ROLE_ADMIN' %}ondrop="drop(event, '{{ column }}')" ondragover="allowDrop(event)" ondragleave="dragLeave(event)"{% endif %}>
+                    <h2 class="{{ column | replace({'_': '-'}) }}">{{ column|capitalize|replace({'_': ' '}) }}</h2>
+                    
+                    {% if tickets|length > 0 %}
+                        {% for ticketData in tickets %}
+                            {% set ticket = ticketData[0] %}
+                            {% set comments_count = ticketData.comments_count %}
+        
+                            <div class="kanban-card" {% if app.user.role == 'ROLE_ADMIN' %}draggable="true" ondragstart="drag(event)"{% endif %} id="ticket-{{ ticket.id }}">
+                                <div class="card-icons">
+                                    <span class="badge badge-type">
+                                        <i class="fas fa-bug"></i> {{ ticket.type }}
+                                    </span>
+                                    <span class="badge badge-priority">
+                                        <i class="fas fa-arrow-up"></i> {{ ticket.priority }}
+                                    </span>
+                                </div>
+                                <div class="card-title">{{ ticket.title }}</div>
+                                <div class="card-body">{{ ticket.content|striptags }}</div>
+                                <div class="card-footer">
+                                    <span class="badge badge-owner">{{ ticket.createdBy|upper|slice(0, 2) }}</span>
+                                    <span class="owner-name">{{ ticket.createdBy }}</span>
+                                    <span class="badge badge-comments">{{ comments_count }} comments</span>
+                                </div>
+                                <a href="{{ path('ticket_detail', {id: ticket.id}) }}">Open Ticket</a>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="empty-column">No tickets available</div>
+                    {% endif %}
+                    <!-- Pagination for current column -->
+            {% set totalPages = attribute(_context, 'total_pages_' ~ column | lower) %}
+            {% set currentPage = attribute(_context, 'current_page_' ~ column | lower) %}
+
+            {% if totalPages > 1 %}
+                <div class="pagination">
+                    {% for i in 1..totalPages %}
+                        <a href="{{ path('kanban', { (column | lower) ~ '_page': i }) }}" class="{{ i == currentPage ? 'active' : '' }}">{{ i }}</a>
+                    {% endfor %}
+                </div>
+            {% endif %}
+                </div>
+                
+            {% endfor %}
+        </div>
+        
+    </div>
+
+    <!-- Loading spinner -->
+    <div id="loading">
+        <div class="spinner-border text-primary" role="status">
+            <span class="sr-only">Loading...</span>
+        </div>
+    </div>
+
+    <!-- New Ticket Modal -->
+    <div class="modal fade" id="newTicketModal" tabindex="-1" aria-labelledby="newTicketModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="newTicketModalLabel">Create a new ticket</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form method="POST" action="{{ path('ticket_create') }}" onsubmit="return handleFormSubmit()">
+                        <input type="hidden" name="action" value="create">
+                        <div class="mb-3">
+                            <label for="department" class="form-label">Department <span class="text-danger">*</span></label>
+                            <select class="form-select select2" id="department" name="department" required>
+                                <option selected>Select an option</option>
+                                <option value="HR">HR</option>
+                                <option value="IT">IT</option>
+                                <option value="Finance">Finance</option>
+                                <option value="Marketing">Marketing</option>
+                                <option value="Sales">Sales</option>
+                                <option value="Customer Service">Customer Service</option>
+                                <option value="Operations">Operations</option>
+                                <option value="Legal">Legal</option>
+                            </select>
+                        </div>
+                        <div class="row">
+                            <div class="mb-3 col-md-6">
+                                <label for="type" class="form-label">Type <span class="text-danger">*</span></label>
+                                <select class="form-select select2" id="type" name="type" required>
+                                    <option selected>Select an option</option>
+                                    <option value="Bug">Bug</option>
+                                    <option value="Feature">Feature</option>
+                                    <option value="Task">Other</option>
+                                </select>
+                            </div>
+                            <div class="mb-3 col-md-6">
+                                <label for="priority" class="form-label">Priority <span class="text-danger">*</span></label>
+                                <select class="form-select select2" id="priority" name="priority" required>
+                                    <option selected>Select an option</option>
+                                    <option value="low">Low</option>
+                                    <option value="medium">Medium</option>
+                                    <option value="high">High</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="ticketTitle" class="form-label">Ticket title <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="ticketTitle" name="title" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="ticketContent" class="form-label">Content <span class="text-danger">*</span></label>
+                            <textarea id="ticketContent" name="content">loeasdfasdf</textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Create</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+{% block javascripts %}
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<!-- Select2 JS -->
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script>
+    document.querySelectorAll('.kanban-card').forEach(card => {
+          card.addEventListener('click', function() {
+              var modal = new bootstrap.Modal(document.getElementById('newTicketModal'));
+              modal.show();
+          });
+      });
+
+      document.addEventListener("DOMContentLoaded", function () {
+          tinymce.init({
+              selector: '#ticketContent',
+              height: 300,
+              menubar: true,
+              plugins: [
+                  'advlist autolink lists link image charmap print preview anchor',
+                  'searchreplace visualblocks code fullscreen',
+                  'insertdatetime media table paste code help wordcount'
+              ],
+              toolbar: 'undo redo | formatselect | bold italic backcolor | \
+                        alignleft aligncenter alignright alignjustify | \
+                        bullist numlist outdent indent | removeformat | help',
+  menu: {
+      file: { title: 'File', items: 'newdocument restoredraft | preview | print' },
+      edit: { title: 'Edit', items: 'undo redo | cut copy paste | selectall | searchreplace' },
+      view: { title: 'View', items: 'code | visualaid visualblocks visualchars | preview fullscreen' },
+      insert: { title: 'Insert', items: 'link media | image imagetools | codesample template hr' },
+      format: { title: 'Format', items: 'bold italic underline strikethrough superscript subscript codeformat | styles blocks align | removeformat' },
+      tools: { title: 'Tools', items: 'spellchecker spellcheckerlanguage | code wordcount' },
+      table: { title: 'Table', items: 'inserttable tableprops deletetable | cell row column' },
+      help: { title: 'Help', items: 'help' }
+  },
+  image_title: true, 
+  automatic_uploads: true,
+  file_picker_types: 'image',
+  file_picker_callback: function (cb, value, meta) {
+      var input = document.createElement('input');
+      input.setAttribute('type', 'file');
+      input.setAttribute('accept', 'image/*');
+      input.onchange = function () {
+          var file = this.files[0];
+          var reader = new FileReader();
+          reader.onload = function () {
+              var id = 'blobid' + (new Date()).getTime();
+              var blobCache = tinymce.activeEditor.editorUpload.blobCache;
+              var blobInfo = blobCache.create(id, file, reader.result);
+              blobCache.add(blobInfo);
+              cb(blobInfo.blobUri(), { title: file.name });
+          };
+          reader.readAsDataURL(file);
+      };
+      input.click();
+  }
+          
+          });
+
+          $('.select2').select2({
+              placeholder: "Select an option",
+              allowClear: true,
+              width: 'resolve' 
+          });
+      });
+
+      function handleFormSubmit() {
+          tinymce.triggerSave(); 
+          return true; 
+      }
+
+      function allowDrop(event) {
+          event.preventDefault();
+          event.currentTarget.classList.add('over');
+      }
+
+      function drag(event) {
+          event.dataTransfer.setData("text", event.target.id);
+          event.target.classList.add('dragging');
+      }
+
+      function drop(event, status) {
+          event.preventDefault();
+          event.currentTarget.classList.remove('over');
+
+          document.getElementById('loading').style.display = 'block'; // Show loading spinner
+          
+          var ticketId = event.dataTransfer.getData("text");
+          var ticketElement = document.getElementById(ticketId);
+
+          // Add animation class to the ticket element
+          ticketElement.style.transition = "transform 0.4s ease";
+          ticketElement.style.transform = "scale(1.1)";
+          
+          setTimeout(function() {
+              ticketElement.style.transform = "scale(1)";
+          }, 100);
+
+          setTimeout(function() {
+              ticketElement.classList.remove('dragging');
+              event.target.appendChild(ticketElement);
+
+              // Send AJAX request to update the ticket status
+              var xhr = new XMLHttpRequest();
+              xhr.open("POST", "{{ path('update_ticket_status') }}", true);
+              xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+              xhr.onload = function () {
+                  if (xhr.status === 200) {
+                      console.log("Status updated successfully: " + xhr.responseText);
+                      location.reload(); // Reload the page after the status is updated
+                  } else {
+                      console.error("Error updating status: " + xhr.responseText);
+                  }
+              };
+              xhr.send("action=update_status&id=" + ticketId.split('-')[1] + "&status=" + status);
+          }, 400); // This timeout matches the CSS transition time
+      }
+
+      function dragLeave(event) {
+          event.currentTarget.classList.remove('over');
+      }
+  </script>
+{% endblock %}
+{% block stylesheets %}
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        background-color: #f8f9fa;
+    }
+
+    .container {
+        width: 80%;
+        margin: 0 auto;
+        padding: 20px 0;
+        text-align: center;
+    }
+
+    .header {
+        margin-bottom: 20px;
+    }
+
+    h1 {
+        font-size: 36px;
+        margin-bottom: 10px;
+    }
+
+    p {
+        font-size: 18px;
+        margin-bottom: 20px;
+    }
+
+    .btn-dashboard {
+        background-color: #4a90e2;
+        color: white;
+        padding: 10px 20px;
+        border-radius: 8px;
+        text-decoration: none;
+        font-weight: bold;
+        transition: background-color 0.3s ease;
+        margin-top: 10px;
+        display: inline-block;
+    }
+
+    .btn-add-ticket {
+        background-color: #28a745;
+        color: white;
+        padding: 10px 20px;
+        border-radius: 8px;
+        text-decoration: none;
+        font-weight: bold;
+        transition: background-color 0.3s ease;
+        margin-top: 10px;
+        display: inline-block;
+        margin-left: 10px;
+    }
+
+    .btn-dashboard:hover {
+        background-color: #357abd;
+        color: white;
+    }
+
+    .kanban-board {
+        display: flex;
+        justify-content: space-around;
+        align-items: flex-start;
+        gap: 10px;
+        padding: 20px;
+        flex-wrap: wrap;
+    }
+
+    .kanban-column {
+        background-color: #fff;
+        border-radius: 8px;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        width: 18%;
+        padding: 10px;
+        min-height: 200px;
+        transition: background-color 0.3s;
+    }
+
+    .kanban-column h2 {
+        font-size: 20px;
+        margin-bottom: 10px;
+        text-align: center;
+        padding: 5px;
+        border-radius: 4px;
+    }
+
+    .kanban-column h2.created {
+        background-color: #dee2e6;
+    }
+
+    .kanban-column h2.in-progress {
+        background-color: #cfe2ff;
+    }
+
+    .kanban-column h2.done {
+        background-color: #ffe8cc;
+    }
+
+    .kanban-column h2.validated {
+        background-color: #d4edda;
+    }
+
+    .kanban-column h2.rejected {
+        background-color: #f8d7da;
+    }
+
+    .kanban-card {
+        background-color: #fff;
+        border-radius: 8px;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        margin-bottom: 10px;
+        padding: 15px;
+        cursor: pointer;
+        text-align: left;
+        transition: transform 0.4s ease, background-color 0.4s ease, opacity 0.4s ease, margin 0.4s ease;
+    }
+
+    .kanban-card.dragging {
+        opacity: 0.5;
+        transform: scale(1.05);
+        margin-top: 20px;
+        margin-bottom: 20px;
+    }
+
+    .kanban-column.over {
+        background-color: #f1f1f1;
+        transition: background-color 0.3s ease;
+    }
+
+    .kanban-card .card-icons {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 5px;
+    }
+
+    .kanban-card .card-icons .badge {
+        font-size: 12px;
+        padding: 5px;
+        border-radius: 4px;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .kanban-card .card-icons .badge-type {
+        background-color: #f8d7da;
+        color: #dc3545;
+    }
+
+    .kanban-card .card-icons .badge-priority {
+        background-color: #ffcccc;
+        color: #e60000;
+    }
+
+    .kanban-card .card-title {
+        font-size: 16px;
+        font-weight: bold;
+        margin-bottom: 5px;
+        text-align: left;
+    }
+
+    .kanban-card .card-body {
+        font-size: 14px;
+        margin-bottom: 10px;
+        text-align: left;
+    }
+
+    .kanban-card .card-footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 12px;
+        color: #6c757d;
+        text-align: left;
+    }
+
+    .kanban-card .card-footer .badge-owner {
+        background-color: #007bff;
+        color: #fff;
+        padding: 5px;
+        border-radius: 50%;
+        width: 30px;
+        height: 30px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-size: 14px;
+        margin-right: 10px;
+    }
+
+    .kanban-card .card-footer .owner-name {
+        font-weight: bold;
+        color: #333;
+    }
+
+    .kanban-card .card-footer .badge-comments {
+        background-color: #28a745;
+        color: #fff;
+        padding: 5px;
+        border-radius: 4px;
+    }
+
+    .empty-column {
+        text-align: center;
+        color: #aaa;
+        font-size: 14px;
+        margin-top: 20px;
+    }
+
+    .kanban-card a {
+        color: #007bff;
+        text-decoration: none;
+        font-weight: bold;
+    }
+
+    .kanban-card a:hover {
+        text-decoration: underline;
+    }
+
+    .pagination {
+        display: flex;
+        justify-content: center;
+        margin-top: 10px;
+    }
+
+    .pagination a {
+        color: #007bff;
+        text-decoration: none;
+        padding: 5px 10px;
+        border: 1px solid #007bff;
+        margin: 0 2px;
+        border-radius: 5px;
+    }
+
+    .pagination a.active {
+        background-color: #007bff;
+        color: white;
+    }
+
+    .pagination a:hover {
+        background-color: #0056b3;
+        color: white;
+    }
+
+    /* Loading spinner styles */
+    #loading {
+        display: none;
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        z-index: 1000;
+    }
+
+    .spinner-border {
+        width: 3rem;
+        height: 3rem;
+    }
+
+    /* RESPONSIVE DESIGN */
+@media (max-width: 1200px) {
+    .kanban-column {
+        width: 24%; /* 4 columns on medium screens */
+    }
+}
+
+@media (max-width: 992px) {
+    .kanban-column {
+        width: 32%; /* 3 columns on small screens */
+    }
+}
+
+@media (max-width: 768px) {
+    .kanban-board {
+        flex-direction: column; /* Stacks columns vertically */
+        align-items: center; /* Centers columns horizontally */
+    }
+
+.kanban-column {
+    width: 100%; /* Full width for each column */
+    margin-bottom: 20px; /* Adds space between columns */
+}
+}
+</style> 
+{% endblock %}

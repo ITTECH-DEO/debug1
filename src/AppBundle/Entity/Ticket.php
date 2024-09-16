@@ -3,177 +3,114 @@
 namespace AppBundle\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
-use Symfony\Component\Validator\Constraints as Assert;
+use Doctrine\Common\Collections\ArrayCollection;
 
 /**
- * Ticket
- *
- * @ORM\Table(name="tickets",)
  * @ORM\Entity
+ * @ORM\Table(name="tickets")
  */
-
 class Ticket
 {
-    const TYPE_BUG = 'Bug';
-    const TYPE_FEATURE = 'Feature';
-    const TYPE_TASK = 'Task';
-    const PRIORITY_LOW = 'low';
-    const PRIORITY_MEDIUM = 'medium';
-    const PRIORITY_HIGH = 'high';
-    const STATUS_CREATED = 'Created';
-    const STATUS_IN_PROGRESS = 'In Progress';
-    const STATUS_DONE = 'Done';
-    const STATUS_VALIDATED = 'Validated';
-    const STATUS_REJECTED = 'Rejected';
-
-    public static function getArrayType() {
-	return array(
-		self::TYPE_BUG => self::TYPE_BUG,
-	        self::TYPE_FEATURE => self::TYPE_FEATURE,
-	        self::TYPE_TASK => self::TYPE_TASK,
-	);
-    }
-
-    public static function getArrayPriority() {
-	return array(
-		self::PRIORITY_LOW => self::PRIORITY_LOW,
-	        self::PRIORITY_MEDIUM => self::PRIORITY_MEDIUM,
-	        self::PRIORITY_HIGH => self::PRIORITY_HIGH,
-	);
-    }
-
-    public static function getArrayStatus() {
-	return array(
-		self::STATUS_CREATED => self::STATUS_CREATED,
-	        self::STATUS_IN_PROGRESS => self::STATUS_IN_PROGRESS,
-	        self::STATUS_DONE => self::STATUS_DONE,
-	        self::STATUS_VALIDATED=> self::STATUS_VALIDATED,
-	        self::STATUS_REJECTED=> self::STATUS_REJECTED,
-	);
-    }
+    /**
+     * @ORM\Id
+     * @ORM\Column(type="integer")
+     * @ORM\GeneratedValue(strategy="AUTO")
+     */
+    private $id;
 
     /**
-     * @var string
-     *
-     * @ORM\Column(name="project", type="string", length=100, nullable=true)
+     * @ORM\Column(type="string", length=100, nullable=true)
      */
     private $project;
 
-   /**
- * @var string
- * @ORM\Column(name="type", type="string", length=10, nullable=false)
- * @Assert\Choice(choices={"Bug", "Feature", "Task"}, message="Choose a valid type.")
- */
-private $type;
-
-/**
- * @var string
- * @ORM\Column(name="priority", type="string", nullable=false)
- * @Assert\Choice(choices={"low", "medium", "high"}, message="Choose a valid priority.")
- */
-private $priority;
     /**
-     * @var string
-     * @Assert\NotBlank(message="Title cannot be blank")
-     * @ORM\Column(name="title", type="string", length=255, nullable=false)
+     * @ORM\Column(type="string", columnDefinition="ENUM('Bug', 'Feature', 'Task')")
      */
-    
+    private $type;
+
+    /**
+     * @ORM\Column(type="string", columnDefinition="ENUM('low', 'medium', 'high')")
+     */
+    private $priority;
+
+    /**
+     * @ORM\Column(type="string", length=255)
+     */
     private $title;
 
     /**
-     * @var string
-     * @Assert\NotBlank(message="Content cannot be blank")
-     * @ORM\Column(name="content", type="text", nullable=false)
+     * @ORM\Column(type="text")
      */
     private $content;
 
     /**
-     * @var string
-     *
-     * @ORM\Column(name="image", type="string", length=255, nullable=true)
+     * @ORM\Column(type="string", length=255, nullable=true)
      */
     private $image;
 
-     /**
-     * @var string
-     * Image (optional) 
-     * @ORM\Column(type="text", nullable=true)
+    /**
+     * @ORM\Column(type="string", length=50)
      */
-    private $description; // Properti ini harus ada
+    private $createdBy;
 
     /**
-     * @var string
-     *
-     * @ORM\Column(name="reviewed_by", type="string", length=50, nullable=true)
+     * @ORM\Column(type="string", length=50, nullable=true)
      */
     private $reviewedBy;
 
     /**
- * @var string
- * @ORM\Column(type="string", length=255)
- * @Assert\Choice(choices={"Created", "In Progress", "Done", "Validated", "Rejected"}, message="Choose a valid status.")
- */
-private $status = 'Created'; // Default value
+     * @ORM\Column(type="string", columnDefinition="ENUM('Created', 'In Progress', 'Done', 'Validated', 'Rejected')")
+     */
+    private $status = 'Created';
 
     /**
-     * @var string
-     *
-     * @ORM\Column(name="assigned_to", type="string", length=255, nullable=true)
+     * @ORM\Column(type="string", length=255, nullable=true)
      */
     private $assignedTo;
 
     /**
-     * @var string
-     *
-     * @ORM\Column(name="department", type="string", length=255, nullable=false)
-     */
-    private $department;
-
-    /**
-     * @var \DateTime
-     *
-     * @ORM\Column(name="created_at", type="datetime", nullable=true)
+     * @ORM\Column(type="datetime")
      */
     private $createdAt;
 
     /**
-     * @var string
-     *
-     * @ORM\Column(name="created_by", type="string", length=45, nullable=true)
-     */
-    private $createdBy = 'anonymous';
-
-    /**
-     * @var \DateTime
-     *
-     * @ORM\Column(name="updated_at", type="datetime", nullable=true)
+     * @ORM\Column(type="datetime")
      */
     private $updatedAt;
 
     /**
-     * @var string
-     *
-     * @ORM\Column(name="updated_by", type="string", length=45, nullable=true)
+     * @ORM\Column(type="string", length=255)
      */
-    private $updatedBy;
+    private $department;
 
     /**
-     * @var integer
-     *
-     * @ORM\Column(name="id", type="integer")
-     * @ORM\Id
-     * @ORM\GeneratedValue(strategy="IDENTITY")
+     * @ORM\OneToMany(targetEntity="Comment", mappedBy="ticket")
      */
-    private $id;
+    private $comments;
 
-    // Getters and Setters
+    public function __construct()
+    {
+        $this->comments = new ArrayCollection();
+    }
+
+    // Getters and setters...
+
+    /**
+     * Get id
+     *
+     * @return integer
+     */
+    public function getId()
+    {
+        return $this->id;
+    }
 
     /**
      * Set project
      *
      * @param string $project
      *
-     * @return Tickets
+     * @return Ticket
      */
     public function setProject($project)
     {
@@ -197,14 +134,10 @@ private $status = 'Created'; // Default value
      *
      * @param string $type
      *
-     * @return Tickets
+     * @return Ticket
      */
     public function setType($type)
     {
-        if (!in_array($type, ['Bug', 'Feature', 'Task'])) {
-            throw new \InvalidArgumentException("Invalid type");
-        }
-
         $this->type = $type;
 
         return $this;
@@ -219,31 +152,16 @@ private $status = 'Created'; // Default value
     {
         return $this->type;
     }
-    
-    // Getter dan Setter untuk description
-    public function getDescription()
-    {
-        return $this->description;
-    }
-
-    public function setDescription($description)
-    {
-        $this->description = $description;
-    }
-
 
     /**
      * Set priority
      *
      * @param string $priority
      *
-     * @return Tickets
+     * @return Ticket
      */
     public function setPriority($priority)
     {
-        if (!in_array($priority, ['low', 'medium', 'high'])) {
-            throw new \InvalidArgumentException("Invalid priority");
-        }
         $this->priority = $priority;
 
         return $this;
@@ -264,7 +182,7 @@ private $status = 'Created'; // Default value
      *
      * @param string $title
      *
-     * @return Tickets
+     * @return Ticket
      */
     public function setTitle($title)
     {
@@ -288,14 +206,10 @@ private $status = 'Created'; // Default value
      *
      * @param string $content
      *
-     * @return Tickets
+     * @return Ticket
      */
     public function setContent($content)
     {
-        if (!is_string($content)) {
-            throw new \InvalidArgumentException('Content must be a string.');
-        }
-    
         $this->content = $content;
 
         return $this;
@@ -316,7 +230,7 @@ private $status = 'Created'; // Default value
      *
      * @param string $image
      *
-     * @return Tickets
+     * @return Ticket
      */
     public function setImage($image)
     {
@@ -328,7 +242,7 @@ private $status = 'Created'; // Default value
     /**
      * Get image
      *
-     * @return string|null
+     * @return string
      */
     public function getImage()
     {
@@ -340,7 +254,7 @@ private $status = 'Created'; // Default value
      *
      * @param string $createdBy
      *
-     * @return Tickets
+     * @return Ticket
      */
     public function setCreatedBy($createdBy)
     {
@@ -362,9 +276,9 @@ private $status = 'Created'; // Default value
     /**
      * Set reviewedBy
      *
-     * @param $reviewedBy
+     * @param string $reviewedBy
      *
-     * @return Tickets
+     * @return Ticket
      */
     public function setReviewedBy($reviewedBy)
     {
@@ -386,16 +300,12 @@ private $status = 'Created'; // Default value
     /**
      * Set status
      *
-     * @param $status
+     * @param string $status
      *
-     * @return Tickets
+     * @return Ticket
      */
     public function setStatus($status)
     {
-        if (!in_array($status, self::getArrayStatus())) {
-            throw new \InvalidArgumentException("Invalid status");
-        }
-
         $this->status = $status;
 
         return $this;
@@ -416,7 +326,7 @@ private $status = 'Created'; // Default value
      *
      * @param string $assignedTo
      *
-     * @return Tickets
+     * @return Ticket
      */
     public function setAssignedTo($assignedTo)
     {
@@ -440,9 +350,9 @@ private $status = 'Created'; // Default value
      *
      * @param \DateTime $createdAt
      *
-     * @return Tickets
+     * @return Ticket
      */
-    public function setCreatedAt(\DateTime $createdAt)
+    public function setCreatedAt($createdAt)
     {
         $this->createdAt = $createdAt;
 
@@ -464,9 +374,9 @@ private $status = 'Created'; // Default value
      *
      * @param \DateTime $updatedAt
      *
-     * @return Tickets
+     * @return Ticket
      */
-    public function setUpdatedAt(\DateTime $updatedAt)
+    public function setUpdatedAt($updatedAt)
     {
         $this->updatedAt = $updatedAt;
 
@@ -484,34 +394,11 @@ private $status = 'Created'; // Default value
     }
 
     /**
-     * Set updatedBy
-     *
-     * @param string $updatedBy
-     *
-     * @return Tickets
-     */
-    public function setUpdatedBy($updatedBy)
-    {
-        $this->updatedBy = $updatedBy;
-
-        return $this;
-    }
-
-    /**
-     * Get updatedBy
-     *
-     * @return string
-     */
-    public function getUpdatedBy()    {
-        return $this->updatedBy;
-    }
-
-    /**
      * Set department
      *
      * @param string $department
      *
-     * @return Tickets
+     * @return Ticket
      */
     public function setDepartment($department)
     {
@@ -531,18 +418,36 @@ private $status = 'Created'; // Default value
     }
 
     /**
-     * Get id
+     * Add comment
      *
-     * @return integer
+     * @param \AppBundle\Entity\Comment $comment
+     *
+     * @return Ticket
      */
-    public function getId()
+    public function addComment(\AppBundle\Entity\Comment $comment)
     {
-        return $this->id;
+        $this->comments[] = $comment;
+
+        return $this;
     }
 
-    // Overriding __toString() to return project and type
-    public function __toString()
+    /**
+     * Remove comment
+     *
+     * @param \AppBundle\Entity\Comment $comment
+     */
+    public function removeComment(\AppBundle\Entity\Comment $comment)
     {
-        return $this->project . ' - ' . $this->type;
+        $this->comments->removeElement($comment);
+    }
+
+    /**
+     * Get comments
+     *
+     * @return \Doctrine\Common\Collections\Collection
+     */
+    public function getComments()
+    {
+        return $this->comments;
     }
 }

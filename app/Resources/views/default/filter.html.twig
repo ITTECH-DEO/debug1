@@ -1,0 +1,91 @@
+<div class="filter-card-header" id="filterToggle">
+    <strong>Filters</strong>
+    <span class="float-end">
+        <i class="material-icons">expand_more</i>
+    </span>
+</div>
+
+<div class="filter-card-body" id="filterContent">
+    <form id="filterForm" method="GET" action="">
+        <div class="d-flex justify-content-between align-items-center">
+            <div class="filters">
+                <div class="dropdown">
+                    <select class="form-select" id="departmentDropdown" name="department" aria-label="Select Department" onchange="filterTickets();">
+                        <option value="all" <?= ($selected_department == 'all') ? 'selected' : '' ?>>All Departments</option>
+                        <?php 
+                        $departments = mysqli_query($conn, "SELECT DISTINCT department FROM tickets");
+                        while ($department = mysqli_fetch_assoc($departments)) {
+                            $department_value = strtolower($department['department']);
+                            $selected = ($department_value == $selected_department) ? 'selected' : '';
+                            echo "<option value='{$department_value}' {$selected}>" . ucfirst($department['department']) . "</option>";
+                        }
+                        ?>
+                    </select>
+                </div>
+                <div class="dropdown">
+                    <select class="form-select" id="priorityDropdown" name="priority" aria-label="Select Priority" onchange="filterTickets();">
+                        <option value="all" <?= ($selected_priority == 'all') ? 'selected' : '' ?>>All Priorities</option>
+                        <?php 
+                        $priorities = mysqli_query($conn, "SELECT DISTINCT priority FROM tickets");
+                        while ($priority = mysqli_fetch_assoc($priorities)) {
+                            $priority_value = strtolower($priority['priority']);
+                            $selected = ($priority_value == $selected_priority) ? 'selected' : '';
+                            echo "<option value='{$priority_value}' {$selected}>" . ucfirst($priority_value) . "</option>";
+                        }
+                        ?>
+                    </select>
+                </div>
+                <div class="dropdown">
+                    <select class="form-select" id="statusDropdown" name="status" aria-label="Select Status" onchange="filterTickets();">
+                    <option value="all" <?= ($selected_status == 'all') ? 'selected' : '' ?>>All Statuses</option>
+                        <?php 
+                        $statuses = mysqli_query($conn, "SELECT DISTINCT status FROM tickets");
+                        while ($status = mysqli_fetch_assoc($statuses)) {
+                            $status_value = strtolower($status['status']);
+                            $selected = ($status_value == $selected_status) ? 'selected' : '';
+                            echo "<option value='{$status_value}' {$selected}>" . ucfirst($status['status']) . "</option>";
+                        }
+                        ?>
+                    </select>
+                </div>
+                <div class="dropdown">
+                    <select class="form-select" id="typeDropdown" name="type" aria-label="Select Type" onchange="filterTickets();">
+                        <option value="all" <?= ($selected_type == 'all') ? 'selected' : '' ?>>All Types</option>
+                        <?php 
+                        $types = mysqli_query($conn, "SELECT DISTINCT type FROM tickets");
+                        while ($type = mysqli_fetch_assoc($types)) {
+                            $type_value = strtolower($type['type']);
+                            $selected = ($type_value == $selected_type) ? 'selected' : '';
+                            echo "<option value='{$type_value}' {$selected}>" . ucfirst($type['type']) . "</option>";
+                        }
+                        ?>
+                    </select>
+                </div>
+                <div class="dropdown">
+                    <select class="form-select" id="responsibleDropdown" name="responsible" aria-label="Select Responsible" onchange="filterTickets();">
+                        <option value="all" <?= ($selected_responsible == 'all') ? 'selected' : '' ?>>All Responsible</option>
+                        <?php 
+                        $responsibles = mysqli_query($conn, "SELECT DISTINCT assigned_to FROM tickets WHERE assigned_to IS NOT NULL");
+                        while ($responsible = mysqli_fetch_assoc($responsibles)) {
+                            $responsible_value = strtolower($responsible['assigned_to']);
+                            $selected = ($responsible_value == $selected_responsible) ? 'selected' : '';
+                            echo "<option value='{$responsible_value}' {$selected}>" . ucfirst($responsible['assigned_to']) . "</option>";
+                        }
+                        ?>
+                    </select>
+                </div>
+                <div class="search-bar">
+                    <input type="text" placeholder="Search for tickets" name="search" value="<?= $search_text ?>" oninput="filterTickets();">
+                </div>
+            </div>
+            <div class="filters">
+                <button class="btn btn-primary" type="submit">
+                    <span class="material-icons">search</span>
+                </button>
+                <button class="btn btn-outline-secondary" type="reset">
+                    <span class="material-icons">filter_list</span>
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
