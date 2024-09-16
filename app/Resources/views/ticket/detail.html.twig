@@ -80,6 +80,47 @@
                                     </div>
                                     <div class="comment-content">
                                         {{ comment.comment|raw }}
+                                        {% if comment.image is not empty %}
+                                            <div class="ticket-image mt-3">
+                                                <a href="{{ asset(comment.image) }}" class="view-image-link">View Image</a>
+                                            </div>
+                                        {% endif %}
+                                        
+                                    </div>
+                                    <div class="comment-actions">
+
+                                        {% if app.user.username == comment.name %}
+                                        <a href="#" class="text-primary" data-bs-toggle="modal" data-bs-target="#editCommentModal-{{ comment.id }}">Edit</a> | 
+                                            <form method="POST" action="{{ path('comment_delete') }}" style="display:inline;" onsubmit="return confirmDeleteComment();">
+                                                <input type="hidden" name="action" value="delete_comment">
+                                                <input type="hidden" name="comment_id" value="{{ comment.id }}">
+                                                <input type="hidden" name="ticket_id" value="{{ comment.ticket.id }}">
+                                                <button type="submit" class="btn btn-link text-danger p-0">Delete</button>
+                                            </form>
+                                        {% endif %}
+                                        
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Modal for Editing Comment -->
+                        <div class="modal fade" id="editCommentModal-{{ comment.id }}" tabindex="-1" aria-labelledby="editCommentModalLabel-{{ comment.id }}" aria-hidden="true">
+                            <div class="modal-dialog">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title" id="editCommentModalLabel-{{ comment.id }}">Edit Comment</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <form method="POST" action="{{ path('comment_update') }}" onsubmit="return saveCommentContent({{ comment.id }})">
+                                            <input type="hidden" name="action" value="edit_comment">
+                                            <input type="hidden" name="comment_id" value="{{ comment.id }}">
+                                            <input type="hidden" name="ticket_id" value="{{ comment.ticket.id }}">
+                                            <textarea class="form-control editCommentContent" id="editCommentContent-{{ comment.id }}" name="comment">{{ comment.comment | raw}}</textarea>
+                                            <input type="hidden" name="comment" id="editCommentInput-{{ comment.id }}">
+                                            <button type="submit" class="btn btn-primary mt-3">Update</button>
+                                        </form>
                                     </div>
                                 </div>
                             </div>
@@ -249,7 +290,7 @@
                    alignleft aligncenter alignright alignjustify | \
                    bullist numlist outdent indent | removeformat | help | image | media | link',
          image_advtab: true,
-         images_upload_url: 'upload_image.php', // Use upload_image.php for image uploads
+         images_upload_url: "{{ path('uplad_image') }}", // Use upload_image.php for image uploads
          automatic_uploads: true,
          file_picker_types: 'image',
          file_picker_callback: function(callback, value, meta) {

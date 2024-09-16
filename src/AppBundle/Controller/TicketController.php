@@ -13,6 +13,7 @@ use Sensio\Bundle\FrameworkExtraBundle\Configuration\Route;
 use Sensio\Bundle\FrameworkExtraBundle\Configuration\Method;
 use Symfony\Component\HttpFoundation\File\Exception\FileException;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
+use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\Session\SessionInterface;
@@ -101,7 +102,7 @@ class TicketController extends Controller
         }
 
         // Redirect back to the ticket list page or some other page
-        return $this->redirectToRoute('homepage'); 
+        return $this->redirectToRoute('homepage');
     }
 
     /**
@@ -124,8 +125,8 @@ class TicketController extends Controller
         $file = $request->files->get('image');
 
         if ($file instanceof UploadedFile) {
-        // die(dump($file));
-        // die(dump($this->getParameter('uploads_directory')));
+            // die(dump($file));
+            // die(dump($this->getParameter('uploads_directory')));
 
             try {
                 $fileName = md5(uniqid()) . '.' . $file->guessExtension();
@@ -135,7 +136,6 @@ class TicketController extends Controller
             } catch (FileException $e) {
                 // Handle the error (e.g., log it or set an error message)
                 $this->addFlash('error', 'Failed to upload image.');
-                die(dump($e));
                 return $this->redirectToRoute('ticket_create');
             }
         }
@@ -157,7 +157,7 @@ class TicketController extends Controller
         $ticket->setCreatedBy($createdBy);
         $ticket->setReviewedBy($reviewedBy);
         $ticket->setStatus($status);
-        $ticket->setImage("uploads/".$imagePath);
+        $ticket->setImage("uploads/" . $imagePath);
         $ticket->setCreatedAt(new \DateTime());
         $ticket->setUpdatedAt(new \DateTime());
 
@@ -191,13 +191,17 @@ class TicketController extends Controller
         // }
 
         // Handle image upload
-        
+
 
 
         $isowner = false;
         if ($this->getUser() && $this->getUser()->getUsername() == $ticket->getCreatedBy()) {
             $isowner = true;
         }
+
+        // if ($ticket->getAssi) {
+        //     # code...
+        // }
 
         // Mengambil data komentar
         $comments = $em->getRepository(Comment::class)->findBy(
@@ -216,7 +220,7 @@ class TicketController extends Controller
     /**
      * @Route("/ticket/update/{id}", name="update_ticket", methods={"POST"})
      */
-    public function updateTicketAction($id,Request $request, EntityManagerInterface $em)
+    public function updateTicketAction($id, Request $request, EntityManagerInterface $em)
     {
 
         // dump($request->request->all());
@@ -245,14 +249,14 @@ class TicketController extends Controller
         $file = $request->files->get('image');
 
         if ($file instanceof UploadedFile) {
-        // die(dump($file));
-        // die(dump($this->getParameter('uploads_directory')));
+            // die(dump($file));
+            // die(dump($this->getParameter('uploads_directory')));
 
             try {
                 $fileName = md5(uniqid()) . '.' . $file->guessExtension();
                 $file->move($this->getParameter('uploads_directory'), $fileName);
                 // $file->move($this->getParameter('kernel.project_dir').'/web/uploads', $fileName);
-                $imagePath = "uploads/".$fileName;
+                $imagePath = "uploads/" . $fileName;
             } catch (FileException $e) {
                 // Handle the error (e.g., log it or set an error message)
                 $this->addFlash('error', 'Failed to upload image.');
@@ -300,7 +304,7 @@ class TicketController extends Controller
     }
 
     /**
-     * @Route("/ticket/comment/{id}", name="add_comment", methods={"POST"})
+     * @Route("/ticket/comment/{id}/", name="add_comment", methods={"POST"})
      */
     public function addComment(Request $request, EntityManagerInterface $em, $id)
     {
@@ -309,11 +313,15 @@ class TicketController extends Controller
         $commentContent = $request->request->get('comment');
         $imagePath = null;
 
-        // Extract image path if present
+        
+
         if (preg_match('/<img.*?src=["\'](.*?)["\'].*?>/i', $commentContent, $matches)) {
             $imagePath = $matches[1]; // Save the first image path found
+            $imagePath = str_replace('../../', '', $imagePath);
             $commentContent = preg_replace('/<img.*?src=["\'](.*?)["\'].*?>/i', '', $commentContent); // Remove image from comment content
         }
+
+        // die(dump($imagePath));
 
         // Find the ticket entity by ID
         $ticket = $em->getRepository(Ticket::class)->find($ticketId);
@@ -331,12 +339,130 @@ class TicketController extends Controller
         $comment->setImage($imagePath);
         $comment->setCreatedAt(new \DateTime());
 
+        // die(dump($comment));
+
         $em->persist($comment);
         $em->flush();
 
         // Redirect back to the previous page
         $this->addFlash('success', 'Comment added successfully.');
         return $this->redirect($request->headers->get('referer'));
+    }
+
+    /**
+     * @Route("/ticket/upload/comment", name="uplad_image", methods={"POST"})
+     */
+    public function uploadImageCommentAction(Request $request)
+    {
+        // Directory where uploaded images will be stored
+        $targetDir = $this->getParameter('kernel.root_dir') . '/../web/uploads/';
+
+        // Create directory if it doesn't exist
+        if (!file_exists($targetDir)) {
+            mkdir($targetDir, 0777, true);
+        }
+
+        $response = [];
+
+        // Check if the request has a file
+        if ($request->files->has('file')) {
+            $file = $request->files->get('file');
+            $fileName = uniqid() . '-' . basename($file->getClientOriginalName());
+            $targetFilePath = $targetDir . $fileName;
+            $fileType = strtolower($file->guessExtension());
+
+            // Allow only certain file formats
+            $allowTypes = ['jpg', 'png', 'jpeg', 'gif'];
+
+            if (in_array($fileType, $allowTypes)) {
+                try {
+                    // Move the file to the target directory
+                    $file->move($this->getParameter('uploads_directory'), $fileName);
+
+                    // Return the relative path to be used by TinyMCE
+                    $response['location'] = '/uploads/' . $fileName;
+                } catch (FileException $e) {
+                    return new JsonResponse(['error' => 'File upload failed.'], 500);
+                }
+            } else {
+                return new JsonResponse(['error' => 'Invalid file type.'], 400);
+            }
+        } else {
+            return new JsonResponse(['error' => 'No file uploaded.'], 400);
+        }
+
+        return new JsonResponse($response);
+    }
+
+    /**
+     * @Route("/comment/update", name="comment_update", methods={"POST"})
+     */
+    public function update(Request $request, EntityManagerInterface $entityManager)
+    {
+        // Get the comment ID and updated comment from the request
+        $commentId = $request->request->get('comment_id');
+        $updatedComment = $request->request->get('comment');
+        $ticketId = $request->request->get('ticket_id');
+
+        // Check if the comment ID or updated comment is empty
+        if (empty($commentId) || empty($updatedComment)) {
+            $this->addFlash('error', 'Error: Comment ID or updated comment cannot be empty!');
+            return $this->redirectToRoute('ticket_detail', ['id' => $ticketId]);
+        }
+
+        // Find the comment entity by its ID
+        $comment = $entityManager->getRepository(Comment::class)->find($commentId);
+
+        if ($comment) {
+            // Update the comment content
+            $comment->setComment($updatedComment);
+            
+            // Save the changes to the database
+            $entityManager->flush();
+
+            // Add a success flash message
+            $this->addFlash('success', 'Comment updated successfully.');
+        } else {
+            // Add an error flash message if the comment was not found
+            $this->addFlash('error', 'Error: Comment not found.');
+        }
+
+        // Redirect back to the ticket detail page
+        return $this->redirectToRoute('ticket_detail', ['id' => $ticketId]);
+    }
+
+    /**
+     * @Route("/comment/delete", name="comment_delete", methods={"POST"})
+     */
+    public function delete(Request $request, EntityManagerInterface $entityManager)
+    {
+        // Get comment ID from the POST request
+        $commentId = $request->request->get('comment_id');
+        $ticketId = $request->request->get('ticket_id');
+
+        // Check if the comment ID is provided
+        if (empty($commentId)) {
+            $this->addFlash('error', 'Error: Comment ID cannot be empty!');
+            return $this->redirectToRoute('ticket_detail', ['id' => $ticketId]);
+        }
+
+        // Find the comment entity using Doctrine
+        $comment = $entityManager->getRepository(Comment::class)->find($commentId);
+
+        if ($comment) {
+            // Remove the comment from the database
+            $entityManager->remove($comment);
+            $entityManager->flush();
+
+            // Add a success flash message
+            $this->addFlash('success', 'Comment deleted successfully.');
+        } else {
+            // Add an error flash message if the comment was not found
+            $this->addFlash('error', 'Error: Comment not found.');
+        }
+
+        // Redirect back to the ticket detail page
+        return $this->redirectToRoute('ticket_detail', ['id' => $ticketId]);
     }
 
     /**
@@ -360,32 +486,32 @@ class TicketController extends Controller
         // Apply search filters
         if (!empty($searchText)) {
             $qb->andWhere('t.title LIKE :searchText')
-               ->setParameter('searchText', '%' . $searchText . '%');
+                ->setParameter('searchText', '%' . $searchText . '%');
         }
 
         if ($selectedDepartment !== 'all') {
             $qb->andWhere('LOWER(t.department) = :department')
-               ->setParameter('department', $selectedDepartment);
+                ->setParameter('department', $selectedDepartment);
         }
 
         if ($selectedPriority !== 'all') {
             $qb->andWhere('LOWER(t.priority) = :priority')
-               ->setParameter('priority', $selectedPriority);
+                ->setParameter('priority', $selectedPriority);
         }
 
         if ($selectedStatus !== 'all') {
             $qb->andWhere('LOWER(t.status) = :status')
-               ->setParameter('status', $selectedStatus);
+                ->setParameter('status', $selectedStatus);
         }
 
         if ($selectedType !== 'all') {
             $qb->andWhere('LOWER(t.type) = :type')
-               ->setParameter('type', $selectedType);
+                ->setParameter('type', $selectedType);
         }
 
         if ($selectedResponsible !== 'all') {
             $qb->andWhere('LOWER(t.assignedTo) = :responsible')
-               ->setParameter('responsible', $selectedResponsible);
+                ->setParameter('responsible', $selectedResponsible);
         }
 
         if ($selectedWeek !== 'all') {
@@ -408,8 +534,8 @@ class TicketController extends Controller
                     break;
             }
             $qb->andWhere('t.createdAt BETWEEN :startOfWeek AND :endOfWeek')
-               ->setParameter('startOfWeek', $startOfWeek)
-               ->setParameter('endOfWeek', $endOfWeek);
+                ->setParameter('startOfWeek', $startOfWeek)
+                ->setParameter('endOfWeek', $endOfWeek);
         }
 
         $qb->orderBy('t.createdAt', 'DESC');

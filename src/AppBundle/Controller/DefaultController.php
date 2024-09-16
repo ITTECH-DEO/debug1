@@ -74,7 +74,7 @@ class DefaultController extends Controller
         $qrmy = $qb;
 
         // Get the tickets based on the filters
-        $tickets = $qrrd->andWhere('t.assignedTo IS NOT NULL ')->getQuery()->getResult();
+        $tickets = $qrrd->getQuery()->getResult();
 
         $ticket_new = $qrnew->orderBy('t.createdAt', 'DESC')->orWhere('t.assignedTo is NULL')->orWhere('t.assignedTo is not NULL')
             ->getQuery()
