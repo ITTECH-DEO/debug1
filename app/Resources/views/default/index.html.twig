@@ -1307,22 +1307,10 @@
         const target = document.querySelector(this.dataset.target);
         target.classList.add("active");
 
-        loadTabContent(target.id);
       });
     });
 
-    function loadTabContent(tabId) {
-      $.ajax({
-        url: "{{ path('load_tab_content') }}",
-        type: "GET",
-        data: {
-          tab: tabId,
-        },
-        success: function (response) {
-          $("#" + tabId + " .card-custom-container").html(response);
-        },
-      });
-    }
+    
 
     tinymce.init({
       selector: "#ticketContent",

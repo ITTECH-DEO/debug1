@@ -38,6 +38,7 @@ class DefaultController extends Controller
 
         // Build the query with Doctrine QueryBuilder
         $qb = $ticketRepository->createQueryBuilder('t');
+        
 
         if ($selectedDepartment !== 'all') {
             $qb->andWhere('t.department = :department')
@@ -66,27 +67,35 @@ class DefaultController extends Controller
 
         // die(dump($qb->getQuery()->getSQL()));
 
-        // Get the tickets based on the filters
-        $tickets = $qb->getQuery()->getResult();
+        $qrrd = $qb;
+        $qrnew = $qb;
+        $qrres = $qb;
+        $qron = $qb;
+        $qrmy = $qb;
 
-        $ticket_new = $qb->orderBy('t.createdAt', 'DESC')
+        // Get the tickets based on the filters
+        $tickets = $qrrd->andWhere('t.assignedTo IS NOT NULL ')->getQuery()->getResult();
+
+        $ticket_new = $qrnew->orderBy('t.createdAt', 'DESC')->orWhere('t.assignedTo is NULL')->orWhere('t.assignedTo is not NULL')
             ->getQuery()
             ->getResult();
 
-        $tickets_ongoing = $qb->andWhere('t.status = :status')
+        $tickets_ongoing = $qron->andWhere('t.assignedTo IS NOT NULL ')->andWhere('t.status = :status')
             ->setParameter('status', 'In Progress')
             ->getQuery()
             ->getResult();
 
-        $ticket_resolved = $qb->andWhere('t.status = :status')
+        $ticket_resolved = $qrres->andWhere('t.assignedTo IS NOT NULL ')->andWhere('t.status = :status')
             ->setParameter('status', 'Validated')
             ->getQuery()
             ->getResult();
 
-        $ticket_my = $qb->andWhere('t.assignedTo = :assignedTo')
+        $ticket_my = $qrmy->andWhere('t.assignedTo IS NOT NULL ')->andWhere('t.assignedTo = :assignedTo')
             ->setParameter('assignedTo', $user->getUsername())
             ->getQuery()
             ->getResult();
+
+   
 
 
         // Get filter data for dropdowns
