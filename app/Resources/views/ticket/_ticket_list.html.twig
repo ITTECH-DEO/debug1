@@ -1,0 +1,30 @@
+{% for ticket in tickets %}
+    <div class="card-custom" data-status="{{ ticket.status|lower }}" data-priority="{{ ticket.priority|lower }}">
+        <div class="card-header-custom {{ ticket.priority|lower }}">
+            <div class="d-flex justify-content-between align-items-center">
+                <span class="card-title-custom">Ticket# {{ ticket.id }}</span>
+                <span class="priority-label {{ ticket.priority|lower }}">{{ ticket.priority|capitalize }} Priority</span>
+            </div>
+            <span class="posted-time">Posted at {{ ticket.createdAt|date('Y-m-d H:i') }}</span>
+        </div>
+        <div class="card-body-custom">
+            <p class="card-title-custom">{{ ticket.title }}</p>
+            <p class="card-text-custom">{{ ticket.content }}</p>
+        </div>
+        <div class="card-footer-custom">
+            <div class="reviewed-by">
+                <div class="created-by">
+                    <img src="People.png" alt="Avatar">
+                    <p class="card-text-custom"><strong>Created by {{ ticket.createdBy }}</strong></p>
+                </div>
+                <div class="created-by">
+                    <img src="People.png" alt="Avatar">
+                    <p class="card-text-custom"><strong>Assigned Admins: {{ ticket.assignedTo }}</strong></p>
+                </div>
+            </div>
+            <a href="{{ path('ticket_detail', {'id': ticket.id}) }}" class="open-ticket-link">Open Ticket</a>
+        </div>
+    </div>
+{% else %}
+    <p>No tickets found.</p>
+{% endfor %}

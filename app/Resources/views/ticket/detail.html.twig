@@ -164,7 +164,7 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <form method="POST" action="{{ path('update_ticket',{id:ticket.id}) }}" id="editForm" onsubmit="return handleEditFormSubmit()">
+                <form method="POST" action="{{ path('update_ticket',{id:ticket.id}) }}" enctype="multipart/form-data" id="editForm" onsubmit="return handleEditFormSubmit()">
                     <input type="hidden" name="action" value="update">
                     <input type="hidden" name="id" value="{{ ticket.id }}">
 
@@ -212,6 +212,12 @@
                         <textarea id="editTicketContent" name="content" class="form-control" required>{{ ticket.content }}</textarea>
                         <!-- Hidden field for content -->
                         <input type="hidden" name="content" id="editContentInput">
+                    </div>
+
+                     <!-- Image Upload Input -->
+                     <div class="mb-3">
+                        <label for="ticketImage" class="form-label">Upload Image</label>
+                        <input type="file" class="form-control" id="ticketImage" name="image">
                     </div>
 
                     <button type="submit" class="btn btn-primary">Update</button>

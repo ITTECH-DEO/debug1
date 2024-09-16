@@ -163,11 +163,98 @@
         <span class="material-icons">check_circle_outline</span>
         Resolved
       </a>
+      {% if is_granted('ROLE_ADMIN') %}
+      <a href="#" class="tab-link" data-target="#my-tickets">
+        <span class="material-icons">assignment_ind</span>
+        Tiket Saya
+      </a>
+      {% endif %}
+      
     </div>
   </div>
 
-  
+  <div class="filter-card-header" id="filterToggle">
+    <strong>Filters</strong>
+    <span class="float-end">
+        <i class="material-icons">expand_more</i>
+    </span>
+</div>
 
+  <div class="filter-card-body" id="filterContent">
+    <form id="filterForm" method="GET" action="{{ path('homepage') }}">
+      <div class="d-flex justify-content-between align-items-center">
+          <div class="filters">
+              <div class="dropdown">
+                  <select class="form-select" id="departmentDropdown" name="department" aria-label="Select Department">
+                      <option value="all" {{ selected_department == 'all' ? 'selected' : '' }}>All Departments</option>
+                      {% for department in departments %}
+                          {% set department_value = department.department|lower %}
+                          <option value="{{ department_value }}" {{ department_value == selected_department ? 'selected' : '' }}>
+                              {{ department.department|capitalize }}
+                          </option>
+                      {% endfor %}
+                  </select>
+              </div>
+              <div class="dropdown">
+                  <select class="form-select" id="priorityDropdown" name="priority" aria-label="Select Priority">
+                      <option value="all" {{ selected_priority == 'all' ? 'selected' : '' }}>All Priorities</option>
+                      {% for priority in priorities %}
+                          {% set priority_value = priority.priority|lower %}
+                          <option value="{{ priority_value }}" {{ priority_value == selected_priority ? 'selected' : '' }}>
+                              {{ priority_value|capitalize }}
+                          </option>
+                      {% endfor %}
+                  </select>
+              </div>
+              <div class="dropdown">
+                  <select class="form-select" id="statusDropdown" name="status" aria-label="Select Status">
+                      <option value="all" {{ selected_status == 'all' ? 'selected' : '' }}>All Statuses</option>
+                      {% for status in statuses %}
+                          {% set status_value = status.status|lower %}
+                          <option value="{{ status_value }}" {{ status_value == selected_status ? 'selected' : '' }}>
+                              {{ status_value|capitalize }}
+                          </option>
+                      {% endfor %}
+                  </select>
+              </div>
+              <div class="dropdown">
+                  <select class="form-select" id="typeDropdown" name="type" aria-label="Select Type">
+                      <option value="all" {{ selected_type == 'all' ? 'selected' : '' }}>All Types</option>
+                      {% for type in types %}
+                          {% set type_value = type.type|lower %}
+                          <option value="{{ type_value }}" {{ type_value == selected_type ? 'selected' : '' }}>
+                              {{ type.type|capitalize }}
+                          </option>
+                      {% endfor %}
+                  </select>
+              </div>
+              <div class="dropdown">
+                  <select class="form-select" id="responsibleDropdown" name="responsible" aria-label="Select Responsible">
+                      <option value="all" {{ selected_responsible == 'all' ? 'selected' : '' }}>All Responsible</option>
+                      {% for responsible in responsibles %}
+                          {% set responsible_value = responsible.assignedTo|lower %}
+                          <option value="{{ responsible_value }}" {{ responsible_value == selected_responsible ? 'selected' : '' }}>
+                              {{ responsible.assignedTo|capitalize }}
+                          </option>
+                      {% endfor %}
+                  </select>
+              </div>
+              <div class="search-bar">
+                  <input type="text" placeholder="Search for tickets" name="search" value="{{ search_text }}">
+              </div>
+          </div>
+          <div class="filters">
+              <button class="btn btn-primary" type="submit">
+                  <span class="material-icons">search</span>
+              </button>
+              <button class="btn btn-outline-secondary" type="reset">
+                  <span class="material-icons">filter_list</span>
+              </button>
+          </div>
+      </div>
+  </form>
+  </div>
+    
   <div id="all-tickets" class="tab-content active">
     <div id="ticketList" class="card-custom-container">
       
@@ -209,11 +296,91 @@
                 <div class="card-footer-custom">
                     <div class="reviewed-by">
                         <div class="created-by">
-                            <img src="{{ asset('images/People.png') }}" alt="Avatar">
+                            <img src="{{ asset('uploads/People.png') }}" alt="Avatar">
                             <p class="card-text-custom"><strong>Created by {{ created_by }}</strong></p>
                         </div>
                         <div class="created-by">
-                            <img src="{{ asset('images/People.png') }}" alt="Avatar">
+                            <img src="{{ asset('uploads/People.png') }}" alt="Avatar">
+                            <p class="card-text-custom"><strong>Reviewed by {{ reviewed_by }}</strong></p>
+                        </div>
+                    </div>
+                    <a href="" class="open-ticket-link">Open Ticket</a>
+                </div>
+            </div>
+
+            {# Modal for Image #}
+            {% if image_present or image %}
+                <div class="modal fade" id="imageModal{{ id }}" tabindex="-1" aria-labelledby="imageModalLabel{{ id }}" aria-hidden="true">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="imageModalLabel{{ id }}">Image for Ticket# {{ id }}</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                {% if image_present %}
+                                    <img src="{{ asset(matches[1]) }}" class="img-fluid" alt="{{ asset(matches[1]) }}">
+                                {% elseif image %}
+                                    <img src="{{ asset(image) }}" class="img-fluid" alt="{{ asset(image) }}">
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+        {% endfor %}
+    {% else %}
+        <p>No tickets found.</p>
+    {% endif %}
+    </div>
+  </div>
+
+  <div id="new-tickets" class="tab-content ">
+    <div id="ticketList" class="card-custom-container">
+      
+      {% if ticket_new|length > 0 %}
+        {% for ticket in ticket_new %}
+            {# Get the necessary data from the ticket object #}
+            {% set id = ticket.id %}
+            {% set priority = ticket.priority %}
+            {% set status = ticket.status %}
+            {% set title = ticket.title %}
+            {% set content = ticket.content %}
+            {% set created_at = ticket.createdAt|date('Y-m-d H:i:s') %}
+            {% set created_by = ticket.createdBy ?: '' %}
+            {% set reviewed_by = ticket.reviewedBy ?: '' %}
+            {% set image = ticket.image %}
+            
+            {# Check for image presence in content using Twig #}
+            {% set image_present = false %}
+            {% if content matches '/<img[^>]+src="([^">]+)"/i' %}
+                {% set image_present = true %}
+                {% set content = content|replace({ '<img[^>]+>': '' }) %} {# Remove all image tags #}
+            {% endif %}
+
+            <div class="card-custom" data-status="{{ status }}" data-priority="{{ priority }}">
+                <div class="card-header-custom {{ priority }}">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="card-title-custom">Ticket# {{ id }}</span>
+                        <span class="priority-label {{ priority }}">{{ priority|capitalize }} Priority</span>
+                    </div>
+                    <span class="posted-time">Posted at {{ created_at }}</span>
+                </div>
+                <div class="card-body-custom">
+                    <p class="card-title-custom">{{ title }}</p>
+                    <p class="card-text-custom">{{ content|raw }}</p>
+                    {% if image_present or image %}
+                        <p><a href="#" data-bs-toggle="modal" data-bs-target="#imageModal{{ id }}">Lihat Gambar</a></p>
+                    {% endif %}
+                </div>
+                <div class="card-footer-custom">
+                    <div class="reviewed-by">
+                        <div class="created-by">
+                            <img src="{{ asset('uploads/People.png') }}" alt="Avatar">
+                            <p class="card-text-custom"><strong>Created by {{ created_by }}</strong></p>
+                        </div>
+                        <div class="created-by">
+                            <img src="{{ asset('uploads/People.png') }}" alt="Avatar">
                             <p class="card-text-custom"><strong>Reviewed by {{ reviewed_by }}</strong></p>
                         </div>
                     </div>
@@ -246,6 +413,325 @@
         <p>No tickets found.</p>
     {% endif %}
     </div>
+  </div>
+    
+
+  <div id="ongoing-tickets" class="tab-content">
+    <div id="ticketList" class="card-custom-container">
+      
+      {% if tickets_ongoing|length > 0 %}
+        {% for ticket in tickets_ongoing %}
+            {# Get the necessary data from the ticket object #}
+            {% set id = ticket.id %}
+            {% set priority = ticket.priority %}
+            {% set status = ticket.status %}
+            {% set title = ticket.title %}
+            {% set content = ticket.content %}
+            {% set created_at = ticket.createdAt|date('Y-m-d H:i:s') %}
+            {% set created_by = ticket.createdBy ?: '' %}
+            {% set reviewed_by = ticket.reviewedBy ?: '' %}
+            {% set image = ticket.image %}
+            
+            {# Check for image presence in content using Twig #}
+            {% set image_present = false %}
+            {% if content matches '/<img[^>]+src="([^">]+)"/i' %}
+                {% set image_present = true %}
+                {% set content = content|replace({ '<img[^>]+>': '' }) %} {# Remove all image tags #}
+            {% endif %}
+
+            <div class="card-custom" data-status="{{ status }}" data-priority="{{ priority }}">
+                <div class="card-header-custom {{ priority }}">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="card-title-custom">Ticket# {{ id }}</span>
+                        <span class="priority-label {{ priority }}">{{ priority|capitalize }} Priority</span>
+                    </div>
+                    <span class="posted-time">Posted at {{ created_at }}</span>
+                </div>
+                <div class="card-body-custom">
+                    <p class="card-title-custom">{{ title }}</p>
+                    <p class="card-text-custom">{{ content|raw }}</p>
+                    {% if image_present or image %}
+                        <p><a href="#" data-bs-toggle="modal" data-bs-target="#imageModal{{ id }}">Lihat Gambar</a></p>
+                    {% endif %}
+                </div>
+                <div class="card-footer-custom">
+                    <div class="reviewed-by">
+                        <div class="created-by">
+                            <img src="{{ asset('uploads/People.png') }}" alt="Avatar">
+                            <p class="card-text-custom"><strong>Created by {{ created_by }}</strong></p>
+                        </div>
+                        <div class="created-by">
+                            <img src="{{ asset('uploads/People.png') }}" alt="Avatar">
+                            <p class="card-text-custom"><strong>Reviewed by {{ reviewed_by }}</strong></p>
+                        </div>
+                    </div>
+                    <a href="" class="open-ticket-link">Open Ticket</a>
+                </div>
+            </div>
+
+            {# Modal for Image #}
+            {% if image_present or image %}
+                <div class="modal fade" id="imageModal{{ id }}" tabindex="-1" aria-labelledby="imageModalLabel{{ id }}" aria-hidden="true">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="imageModalLabel{{ id }}">Image for Ticket# {{ id }}</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                {% if image_present %}
+                                    <img src="{{ matches[1] }}" class="img-fluid" alt="Ticket Image">
+                                {% elseif image %}
+                                    <img src="{{ image }}" class="img-fluid" alt="Ticket Image">
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+        {% endfor %}
+    {% else %}
+        <p>No tickets found.</p>
+    {% endif %}
+    </div>
+  </div>
+    
+
+  <div id="resolved-tickets" class="tab-content">
+    <div id="ticketList" class="card-custom-container">
+      
+      {% if ticket_resolved|length > 0 %}
+        {% for ticket in ticket_resolved %}
+            {# Get the necessary data from the ticket object #}
+            {% set id = ticket.id %}
+            {% set priority = ticket.priority %}
+            {% set status = ticket.status %}
+            {% set title = ticket.title %}
+            {% set content = ticket.content %}
+            {% set created_at = ticket.createdAt|date('Y-m-d H:i:s') %}
+            {% set created_by = ticket.createdBy ?: '' %}
+            {% set reviewed_by = ticket.reviewedBy ?: '' %}
+            {% set image = ticket.image %}
+            
+            {# Check for image presence in content using Twig #}
+            {% set image_present = false %}
+            {% if content matches '/<img[^>]+src="([^">]+)"/i' %}
+                {% set image_present = true %}
+                {% set content = content|replace({ '<img[^>]+>': '' }) %} {# Remove all image tags #}
+            {% endif %}
+
+            <div class="card-custom" data-status="{{ status }}" data-priority="{{ priority }}">
+                <div class="card-header-custom {{ priority }}">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="card-title-custom">Ticket# {{ id }}</span>
+                        <span class="priority-label {{ priority }}">{{ priority|capitalize }} Priority</span>
+                    </div>
+                    <span class="posted-time">Posted at {{ created_at }}</span>
+                </div>
+                <div class="card-body-custom">
+                    <p class="card-title-custom">{{ title }}</p>
+                    <p class="card-text-custom">{{ content|raw }}</p>
+                    {% if image_present or image %}
+                        <p><a href="#" data-bs-toggle="modal" data-bs-target="#imageModal{{ id }}">Lihat Gambar</a></p>
+                    {% endif %}
+                </div>
+                <div class="card-footer-custom">
+                    <div class="reviewed-by">
+                        <div class="created-by">
+                            <img src="{{ asset('uploads/People.png') }}" alt="Avatar">
+                            <p class="card-text-custom"><strong>Created by {{ created_by }}</strong></p>
+                        </div>
+                        <div class="created-by">
+                            <img src="{{ asset('uploads/People.png') }}" alt="Avatar">
+                            <p class="card-text-custom"><strong>Reviewed by {{ reviewed_by }}</strong></p>
+                        </div>
+                    </div>
+                    <a href="" class="open-ticket-link">Open Ticket</a>
+                </div>
+            </div>
+
+            {# Modal for Image #}
+            {% if image_present or image %}
+                <div class="modal fade" id="imageModal{{ id }}" tabindex="-1" aria-labelledby="imageModalLabel{{ id }}" aria-hidden="true">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="imageModalLabel{{ id }}">Image for Ticket# {{ id }}</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                {% if image_present %}
+                                    <img src="{{ matches[1] }}" class="img-fluid" alt="Ticket Image">
+                                {% elseif image %}
+                                    <img src="{{ image }}" class="img-fluid" alt="Ticket Image">
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+        {% endfor %}
+    {% else %}
+        <p>No tickets found.</p>
+    {% endif %}
+    </div>
+  </div>
+
+  {% if is_granted('ROLE_ADMIN') %}
+  <div id="my-tickets" class="tab-content">
+    <div id="ticketList" class="card-custom-container">
+      
+      {% if ticket_my|length > 0 %}
+        {% for ticket in ticket_my %}
+            {# Get the necessary data from the ticket object #}
+            {% set id = ticket.id %}
+            {% set priority = ticket.priority %}
+            {% set status = ticket.status %}
+            {% set title = ticket.title %}
+            {% set content = ticket.content %}
+            {% set created_at = ticket.createdAt|date('Y-m-d H:i:s') %}
+            {% set created_by = ticket.createdBy ?: '' %}
+            {% set reviewed_by = ticket.reviewedBy ?: '' %}
+            {% set image = ticket.image %}
+            
+            {# Check for image presence in content using Twig #}
+            {% set image_present = false %}
+            {% if content matches '/<img[^>]+src="([^">]+)"/i' %}
+                {% set image_present = true %}
+                {% set content = content|replace({ '<img[^>]+>': '' }) %} {# Remove all image tags #}
+            {% endif %}
+
+            <div class="card-custom" data-status="{{ status }}" data-priority="{{ priority }}">
+                <div class="card-header-custom {{ priority }}">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="card-title-custom">Ticket# {{ id }}</span>
+                        <span class="priority-label {{ priority }}">{{ priority|capitalize }} Priority</span>
+                    </div>
+                    <span class="posted-time">Posted at {{ created_at }}</span>
+                </div>
+                <div class="card-body-custom">
+                    <p class="card-title-custom">{{ title }}</p>
+                    <p class="card-text-custom">{{ content|raw }}</p>
+                    {% if image_present or image %}
+                        <p><a href="#" data-bs-toggle="modal" data-bs-target="#imageModal{{ id }}">Lihat Gambar</a></p>
+                    {% endif %}
+                </div>
+                <div class="card-footer-custom">
+                    <div class="reviewed-by">
+                        <div class="created-by">
+                            <img src="{{ asset('uploads/People.png') }}" alt="Avatar">
+                            <p class="card-text-custom"><strong>Created by {{ created_by }}</strong></p>
+                        </div>
+                        <div class="created-by">
+                            <img src="{{ asset('uploads/People.png') }}" alt="Avatar">
+                            <p class="card-text-custom"><strong>Reviewed by {{ reviewed_by }}</strong></p>
+                        </div>
+                    </div>
+                    <a href="" class="open-ticket-link">Open Ticket</a>
+                </div>
+            </div>
+
+            {# Modal for Image #}
+            {% if image_present or image %}
+                <div class="modal fade" id="imageModal{{ id }}" tabindex="-1" aria-labelledby="imageModalLabel{{ id }}" aria-hidden="true">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="imageModalLabel{{ id }}">Image for Ticket# {{ id }}</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                {% if image_present %}
+                                    <img src="{{ matches[1] }}" class="img-fluid" alt="Ticket Image">
+                                {% elseif image %}
+                                    <img src="{{ image }}" class="img-fluid" alt="Ticket Image">
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+        {% endfor %}
+    {% else %}
+        <p>No tickets found.</p>
+    {% endif %}
+    </div>
+  </div>
+
+  {% endif %}
+
+
+</div>
+
+  
+
+  
+</div>
+
+<!-- New Ticket Modal -->
+<div class="modal fade" id="newTicketModal" tabindex="-1" aria-labelledby="newTicketModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+          <div class="modal-header">
+              <h5 class="modal-title" id="newTicketModalLabel">Create a new ticket</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+              <form method="POST" action="{{ path('ticket_create') }}" enctype="multipart/form-data" onsubmit="return handleFormSubmit()">
+                  <input type="hidden" name="action" value="create">
+                  <div class="mb-3">
+                      <label for="department" class="form-label">Department <span class="text-danger">*</span></label>
+                      <select class="form-select select2" id="department" name="department" required>
+                          <option selected>Select an option</option>
+                          <option value="HR">HR</option>
+                          <option value="IT">IT</option>
+                          <option value="Finance">Finance</option>
+                          <option value="Marketing">Marketing</option>
+                          <option value="Sales">Sales</option>
+                          <option value="Customer Service">Customer Service</option>
+                          <option value="Operations">Operations</option>
+                          <option value="Legal">Legal</option>
+                      </select>
+                  </div>
+                  <div class="row">
+                      <div class="mb-3 col-md-6">
+                          <label for="type" class="form-label">Type <span class="text-danger">*</span></label>
+                          <select class="form-select select2" id="type" name="type" required>
+                              <option selected>Select an option</option>
+                              <option value="Bug">Bug</option>
+                              <option value="Feature">Feature</option>
+                              <option value="Task">Other</option>
+                          </select>
+                      </div>
+                      <div class="mb-3 col-md-6">
+                          <label for="priority" class="form-label">Priority <span class="text-danger">*</span></label>
+                          <select class="form-select select2" id="priority" name="priority" required>
+                              <option selected>Select an option</option>
+                              <option value="low">Low</option>
+                              <option value="medium">Medium</option>
+                              <option value="high">High</option>
+                          </select>
+                      </div>
+                  </div>
+                  <div class="mb-3">
+                      <label for="ticketTitle" class="form-label">Ticket title <span class="text-danger">*</span></label>
+                      <input type="text" class="form-control" id="ticketTitle" name="title" required>
+                  </div>
+                  <div class="mb-3">
+                      <label for="ticketContent" class="form-label">Content <span class="text-danger">*</span></label>
+                      <textarea id="ticketContent" name="content"></textarea>
+                  </div>
+
+                   <!-- Image Upload Input -->
+                   <div class="mb-3">
+                    <label for="ticketImage" class="form-label">Upload Image</label>
+                    <input type="file" class="form-control" id="ticketImage" name="image">
+                  </div>
+
+                  <button type="submit" class="btn btn-primary">Create</button>
+              </form>
+          </div>
+      </div>
   </div>
 </div>
 {% endblock %} {% block stylesheets %}
@@ -719,6 +1205,38 @@
     }
   }
 </style>
+
+<script>
+  function filterTickets() {
+      const searchText = document.getElementById('search-box').value.toLowerCase();
+      const selectedPriority = document.getElementById('priorityDropdown').value.toLowerCase();
+      const selectedDepartment = document.getElementById('departmentDropdown').value.toLowerCase();
+      const selectedType = document.getElementById('typeDropdown').value.toLowerCase();
+      const selectedResponsible = document.getElementById('responsibleDropdown').value.toLowerCase();
+      const selectedWeek = document.getElementById('weekDropdown').value.toLowerCase();
+      const selectedStatus = document.getElementById('statusDropdown').value.toLowerCase();
+
+      $.ajax({
+          url: "{{ path('filter_ticket') }}",
+          type: 'GET',
+          data: {
+              search: searchText,
+              priority: selectedPriority,
+              department: selectedDepartment,
+              type: selectedType,
+              responsible: selectedResponsible,
+              week: selectedWeek,
+              status: selectedStatus
+          },
+          success: function(response) {
+              document.getElementById('ticketList').innerHTML = response;
+          },
+          error: function(xhr, status, error) {
+              console.error('Error occurred:', status, error);
+          }
+      });
+  }
+</script>
 {% endblock %} {% block javascripts %}
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
@@ -795,7 +1313,7 @@
 
     function loadTabContent(tabId) {
       $.ajax({
-        url: "load_tab_content.php",
+        url: "{{ path('load_tab_content') }}",
         type: "GET",
         data: {
           tab: tabId,

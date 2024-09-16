@@ -79,7 +79,7 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <form method="POST" action="{{ path('ticket_create') }}" onsubmit="return handleFormSubmit()">
+                    <form method="POST" action="{{ path('ticket_create') }}" enctype="multipart/form-data" onsubmit="return handleFormSubmit()">
                         <input type="hidden" name="action" value="create">
                         <div class="mb-3">
                             <label for="department" class="form-label">Department <span class="text-danger">*</span></label>
@@ -121,7 +121,13 @@
                         </div>
                         <div class="mb-3">
                             <label for="ticketContent" class="form-label">Content <span class="text-danger">*</span></label>
-                            <textarea id="ticketContent" name="content">loeasdfasdf</textarea>
+                            <textarea id="ticketContent" name="content"></textarea>
+                        </div>
+
+                         <!-- Image Upload Input -->
+                        <div class="mb-3">
+                            <label for="ticketImage" class="form-label">Upload Image</label>
+                            <input type="file" class="form-control" id="ticketImage" name="image">
                         </div>
                         <button type="submit" class="btn btn-primary">Create</button>
                     </form>
